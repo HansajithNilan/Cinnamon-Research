@@ -141,16 +141,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    padding: 20,
-    paddingTop: 50,
-    backgroundColor: colors.white,
+    paddingTop: 60,
+
+    paddingBottom:10,
+    backgroundColor: colors.primary,
     borderBottomWidth: 1,
+
     borderBottomColor: colors.border,
   },
   headerTitle: {
     fontSize: 20,
+    alignSelf: "center",
     fontWeight: "bold",
     color: colors.text,
+paddingVertical:10,
   },
   messageList: {
     padding: 16,

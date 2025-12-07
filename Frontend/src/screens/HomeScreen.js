@@ -33,17 +33,20 @@ const HomeScreen = () => {
 
 const styles = StyleSheet.create({
   header: {
-    padding: 20,
-    backgroundColor: colors.white,
+    paddingTop: 60,
+
+    paddingBottom:10,
+    backgroundColor: colors.primary,
     borderBottomWidth: 1,
+
     borderBottomColor: colors.border,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
+    alignSelf: "center",
     fontWeight: "bold",
     color: colors.text,
-    marginTop: 10,
-    paddingTop: 10,
+paddingVertical:10,
   },
   content: {
     flex: 1,
@@ -61,7 +64,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 28,
     fontWeight: "bold",
     color: colors.text,
     marginBottom: 8,

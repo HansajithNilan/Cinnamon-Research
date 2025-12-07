@@ -374,20 +374,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: colors.white,
-    paddingTop: 50,
+    paddingTop: 60,
+    paddingLeft: 16,
+    paddingBottom:10,
+    backgroundColor: colors.primary,
+    borderBottomWidth: 1,
+
+    borderBottomColor: colors.border,
+  },
+  headerTitle: {
+    fontSize: 20,
+    alignSelf: "center",
+    fontWeight: "bold",
+    color: colors.text,
+
+
   },
   backButton: {
     marginRight: 16,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-  },
+  
   content: {
     flex: 1,
     padding: 16,

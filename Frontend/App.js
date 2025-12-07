@@ -34,10 +34,10 @@ export default function App() {
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textSecondary,
           tabBarStyle: {
-            height: 60,
-            paddingBottom: 8,
+            height: 70,
+            paddingBottom: 28,
             paddingTop: 8,
-            paddingBottom: 10,
+         
             backgroundColor: colors.white,
             borderTopWidth: 1,
             borderTopColor: colors.border,
