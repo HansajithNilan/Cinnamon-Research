@@ -9,4 +9,7 @@ export const colors = {
   textSecondary: "#757575",
   border: "#E0E0E0",
   borderDashed: "#BDBDBD",
+  cinnamon: "#D2691E",
+  cinnamonLight: "#E6A87C",
+  cinnamonDark: "#A0522D",
 };
