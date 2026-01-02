@@ -13,7 +13,10 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../styles/colors";
+
+const { width } = Dimensions.get("window");
 
 const AnalyzeScreen = () => {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -68,6 +71,7 @@ const AnalyzeScreen = () => {
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
+      base64: true,
     });
 
     if (!result.canceled) {
@@ -130,6 +134,28 @@ const AnalyzeScreen = () => {
     setShowHistory(true);
   };
 
+  const Header = ({ title, showBack, onBack }) => (
+    <View style={styles.headerWrapper}>
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerContent}>
+          {showBack && (
+            <TouchableOpacity onPress={onBack} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={colors.white} />
+            </TouchableOpacity>
+          )}
+          <Text style={[styles.headerTitle, showBack && { marginLeft: 8 }]}>
+            {title}
+          </Text>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+
   const renderHistoryItem = ({ item }) => (
     <View style={styles.historyCard}>
       <Image
@@ -141,19 +167,27 @@ const AnalyzeScreen = () => {
         style={styles.historyImage}
       />
       <View style={styles.historyDetails}>
-        <Text style={styles.historyDate}>Date: {item.date}</Text>
-        <Text style={styles.historyText}>
-          <Text style={styles.historyLabel}>Vacant Area:</Text>{" "}
-          {item.vacantArea} Acres
-        </Text>
-        <Text style={styles.historyText}>
-          <Text style={styles.historyLabel}>Plant Count:</Text>{" "}
-          {item.plantCount}
-        </Text>
-        <Text style={styles.historyText}>
-          <Text style={styles.historyLabel}>Estimated Cost:</Text>{" "}
-          {item.estimatedCost}
-        </Text>
+        <View style={styles.historyDateRow}>
+          <Ionicons name="calendar-outline" size={14} color={colors.primary} />
+          <Text style={styles.historyDate}>{item.date}</Text>
+        </View>
+
+        <View style={styles.historyStatsRow}>
+          <View style={styles.historyStat}>
+            <Text style={styles.historyStatLabel}>Area</Text>
+            <Text style={styles.historyStatValue}>{item.vacantArea} Ac</Text>
+          </View>
+          <View style={styles.historyDivider} />
+          <View style={styles.historyStat}>
+            <Text style={styles.historyStatLabel}>Plants</Text>
+            <Text style={styles.historyStatValue}>{item.plantCount}</Text>
+          </View>
+          <View style={styles.historyDivider} />
+          <View style={styles.historyStat}>
+            <Text style={styles.historyStatLabel}>Cost</Text>
+            <Text style={styles.historyStatValue}>{item.estimatedCost}</Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -162,22 +196,20 @@ const AnalyzeScreen = () => {
   if (showHistory) {
     return (
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBackToUpload}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Uploaded Land Details</Text>
-        </View>
-
+        <Header
+          title="Analysis History"
+          showBack={true}
+          onBack={handleBackToUpload}
+        />
         <FlatList
           data={historyData}
           renderItem={renderHistoryItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.historyList}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <Text style={styles.listHeader}>Recent Analyses</Text>
+          }
           ListFooterComponent={
             <TouchableOpacity style={styles.loadMoreButton}>
               <Text style={styles.loadMoreText}>Load More</Text>
@@ -192,62 +224,70 @@ const AnalyzeScreen = () => {
   if (showVacantFilling) {
     return (
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBackToResults}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Vacant Filling Details</Text>
-        </View>
+        <Header
+          title="Vacant Filling"
+          showBack={true}
+          onBack={handleBackToResults}
+        />
 
-        <ScrollView style={styles.vacantFillingContainer}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Metrics Card */}
-          <View style={styles.metricsCard}>
+          <View style={styles.card}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="stats-chart" size={20} color={colors.primary} />
+              <Text style={styles.cardTitle}>Filling Metrics</Text>
+            </View>
+
             <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>Vacant Area Measurement</Text>
+              <Text style={styles.metricLabel}>Vacant Area</Text>
               <Text style={styles.metricValue}>
-                {vacantFillingData.vacantAreaMeasurement} sq.m
+                {vacantFillingData.vacantAreaMeasurement} <Text style={styles.unit}>sq.m</Text>
               </Text>
             </View>
 
             <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>Filling Plant Count</Text>
+              <Text style={styles.metricLabel}>Required Plants</Text>
               <Text style={styles.metricValue}>
                 {vacantFillingData.fillingPlantCount}
               </Text>
             </View>
 
             <View style={[styles.metricRow, styles.lastMetricRow]}>
-              <Text style={styles.metricLabel}>Yield Forecasting</Text>
+              <Text style={styles.metricLabel}>Yield Forecast</Text>
               <Text style={styles.metricValue}>
-                {vacantFillingData.yieldForecasting} kg
+                {vacantFillingData.yieldForecasting} <Text style={styles.unit}>kg</Text>
               </Text>
-            </View>
-
-            <View style={[styles.metricRow, styles.lastMetricRow]}>
-              <Text style={styles.metricLabel}>
-                After Filling Process yield forecasting count
-              </Text>
-              <Text style={styles.metricValue}>XX</Text>
             </View>
           </View>
 
           {/* Graph Card */}
-          <View style={styles.graphCard}>
+          <View style={styles.card}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="trending-up" size={20} color={colors.primary} />
+              <Text style={styles.cardTitle}>Growth Projection</Text>
+            </View>
             <View style={styles.graphPlaceholder}>
-              <Text style={styles.graphPlaceholderText}>graph</Text>
+              <Ionicons name="bar-chart-outline" size={48} color={colors.borderDashed} />
+              <Text style={styles.graphPlaceholderText}>Growth Chart Visualization</Text>
             </View>
           </View>
 
           {/* Confirm Button */}
           <TouchableOpacity
-            style={styles.confirmButton}
+            style={styles.mainButton}
             onPress={handleConfirm}
           >
-            <Text style={styles.confirmButtonText}>Confirm</Text>
+            <LinearGradient
+              colors={[colors.primary, colors.primaryDark]}
+              style={styles.buttonGradient}
+            >
+              <Text style={styles.mainButtonText}>Save & Confirm Analysis</Text>
+              <Ionicons name="checkmark-circle-outline" size={24} color={colors.white} />
+            </LinearGradient>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -258,59 +298,67 @@ const AnalyzeScreen = () => {
   if (showResults && selectedImage) {
     return (
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBackToUpload}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Vacant Area Detection</Text>
-        </View>
+        <Header
+          title="Detection Results"
+          showBack={true}
+          onBack={handleBackToUpload}
+        />
 
-        <ScrollView style={styles.resultsContainer}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Image Result Card */}
-          <View style={styles.imageResultCard}>
+          <View style={styles.cardNoPadding}>
             <Image source={{ uri: selectedImage }} style={styles.resultImage} />
-            <Text style={styles.imageDescription}>Vacant Areas</Text>
+            <View style={styles.imageOverlay}>
+              <Text style={styles.imageOverlayText}>Analyzed Image</Text>
+            </View>
           </View>
 
           {/* Details Card */}
-          <View style={styles.detailsCard}>
-            <Text style={styles.detailsTitle}>Vacant Area Details</Text>
-
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Vacant Area Count</Text>
-              <Text style={styles.detailValue}>
-                {detectionResults.vacantAreaCount}
-              </Text>
+          <View style={styles.card}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="information-circle" size={20} color={colors.primary} />
+              <Text style={styles.cardTitle}>Analysis Summary</Text>
             </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Land Vacant Area Size</Text>
-              <Text style={styles.detailValue}>
-                {detectionResults.landVacantAreaSize}
-              </Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{detectionResults.vacantAreaCount}</Text>
+                <Text style={styles.statLabel}>Vacant Spots</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{detectionResults.landVacantAreaSize}</Text>
+                <Text style={styles.statLabel}>Total Size</Text>
+              </View>
             </View>
 
-            <TouchableOpacity style={styles.addDetailsButton}>
-              <Text style={styles.addDetailsText}>See more...</Text>
+            <TouchableOpacity style={styles.textButton}>
+              <Text style={styles.textButtonLabel}>View Detailed Report</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
-          {/* Instruction Text */}
-          <Text style={styles.instructionText}>
-            If you want to fill vacant area please click below button
-          </Text>
-
-          {/* Vacant Filling Button */}
-          <TouchableOpacity
-            style={styles.vacantFillingButton}
-            onPress={handleVacantFilling}
-          >
-            <Text style={styles.vacantFillingText}>Vacant Filling</Text>
-          </TouchableOpacity>
+          {/* Action Section */}
+          <View style={styles.actionSection}>
+            <Text style={styles.instructionText}>
+              Ready to optimize this area?
+            </Text>
+            <TouchableOpacity
+              style={styles.mainButton}
+              onPress={handleVacantFilling}
+            >
+              <LinearGradient
+                colors={[colors.primary, colors.primaryDark]}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.mainButtonText}>Calculate Vacant Filling</Text>
+                <Ionicons name="calculator-outline" size={24} color={colors.white} />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </View>
     );
@@ -319,51 +367,71 @@ const AnalyzeScreen = () => {
   // Upload Screen (Default)
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Land Image Upload</Text>
-      </View>
+      <Header title="New Analysis" showBack={false} />
 
-      {/* Content */}
-      <View style={styles.content}>
-        {/* Upload Box */}
-        <TouchableOpacity
-          style={styles.uploadBox}
-          onPress={pickImage}
-          activeOpacity={0.7}
-        >
-          <View style={styles.uploadIconContainer}>
-            <Ionicons name="cloud-upload" size={60} color={colors.white} />
-          </View>
-          <Text style={styles.uploadTitle}>Fungal Image Upload</Text>
-          <Text style={styles.uploadSubtitle}>
-            Tap to select a satellite image
-          </Text>
-
-          {selectedImage && (
-            <Image
-              source={{ uri: selectedImage }}
-              style={styles.previewImage}
-            />
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Detect Button */}
-      <TouchableOpacity
-        style={styles.detectButton}
-        onPress={handleDetect}
-        disabled={isDetecting}
+      <ScrollView
+        contentContainerStyle={styles.centerContent}
+        showsVerticalScrollIndicator={false}
       >
-        {isDetecting ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <Text style={styles.detectButtonText}>Detect</Text>
-        )}
-      </TouchableOpacity>
+        <View style={styles.uploadContainer}>
+          <TouchableOpacity
+            style={styles.uploadBox}
+            onPress={pickImage}
+            activeOpacity={0.7}
+          >
+            {selectedImage ? (
+              <Image
+                source={{ uri: selectedImage }}
+                style={styles.previewImage}
+              />
+            ) : (
+              <View style={styles.uploadPlaceholder}>
+                <View style={styles.iconCircle}>
+                  <Ionicons name="cloud-upload" size={40} color={colors.primary} />
+                </View>
+                <Text style={styles.uploadTitle}>Upload Satellite Image</Text>
+                <Text style={styles.uploadSubtitle}>
+                  Tap here to select an image from your gallery
+                </Text>
+              </View>
+            )}
+
+            {selectedImage && (
+              <View style={styles.changeImageOverlay}>
+                <Ionicons name="camera-reverse" size={24} color={colors.white} />
+                <Text style={styles.changeImageText}>Change Image</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.mainButton, !selectedImage && styles.disabledButton]}
+          onPress={handleDetect}
+          disabled={!selectedImage || isDetecting}
+        >
+          <LinearGradient
+            colors={selectedImage ? [colors.primary, colors.primaryDark] : [colors.border, colors.border]}
+            style={styles.buttonGradient}
+          >
+            {isDetecting ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <>
+                <Text style={styles.mainButtonText}>Start Detection</Text>
+                <Ionicons name="scan" size={24} color={colors.white} />
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <View style={styles.infoSection}>
+          <Ionicons name="bulb-outline" size={20} color={colors.textSecondary} />
+          <Text style={styles.infoText}>
+            Ensure the image is clear and well-lit for best results.
+          </Text>
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -373,299 +441,366 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  centerContent: {
+    flexGrow: 1,
+    padding: 20,
+    justifyContent: "center",
+  },
+  // Header Styles
+  headerWrapper: {
+    marginBottom: 0,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: "hidden",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    backgroundColor: colors.primary, // Fallback
+  },
+  headerGradient: {
     paddingTop: 60,
-    paddingLeft: 16,
-    paddingBottom:10,
-    backgroundColor: colors.primary,
-    borderBottomWidth: 1,
-
-    borderBottomColor: colors.border,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerTitle: {
-    fontSize: 20,
-    alignSelf: "center",
+    fontSize: 22,
     fontWeight: "bold",
-    color: colors.text,
-
-
+    color: colors.white,
+    flex: 1,
   },
   backButton: {
-    marginRight: 16,
+    padding: 8,
+    marginRight: 4,
+    marginLeft: -8,
   },
-  
-  content: {
-    flex: 1,
-    padding: 16,
-    justifyContent: "center",
+
+  // Card Styles
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardNoPadding: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 10,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+  },
+
+  // Upload Styles
+  uploadContainer: {
+    marginBottom: 30,
   },
   uploadBox: {
     backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 40,
+    borderRadius: 24,
+    minHeight: 300,
+    justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
     borderStyle: "dashed",
-    borderColor: colors.borderDashed,
+    borderColor: colors.primary, // Changed to primary based on request
+    overflow: 'hidden',
   },
-  uploadIconContainer: {
+  uploadPlaceholder: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  iconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.primary,
+    backgroundColor: "rgba(76, 175, 80, 0.1)", // Light primary
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   uploadTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
     color: colors.text,
     marginBottom: 8,
   },
   uploadSubtitle: {
     fontSize: 14,
     color: colors.textSecondary,
+    textAlign: "center",
   },
   previewImage: {
     width: "100%",
-    height: 200,
-    borderRadius: 12,
-    marginTop: 20,
+    height: 300,
     resizeMode: "cover",
   },
-  detectButton: {
-    backgroundColor: colors.primary,
-    margin: 16,
-    padding: 18,
-    borderRadius: 12,
-    alignItems: "center",
+  changeImageOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    gap: 8,
   },
-  detectButtonText: {
+  changeImageText: {
+    color: colors.white,
+    fontWeight: '600',
+  },
+
+  // Button Styles
+  mainButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  disabledButton: {
+    shadowOpacity: 0,
+    opacity: 0.8,
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 12,
+  },
+  mainButtonText: {
     color: colors.white,
     fontSize: 18,
     fontWeight: "bold",
   },
-  // Results Screen Styles
-  resultsContainer: {
-    flex: 1,
-    padding: 16,
+  textButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    padding: 8,
   },
-  imageResultCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  textButtonLabel: {
+    color: colors.primary,
+    fontWeight: '600',
+    marginRight: 4,
   },
+
+  // Info/Misc Styles
+  infoSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    gap: 8,
+  },
+  infoText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+  },
+
+  // Results Styles
   resultImage: {
     width: "100%",
-    height: 200,
-    borderRadius: 12,
-    resizeMode: "cover",
-    marginBottom: 12,
+    height: 250,
   },
-  imageDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  detailsCard: {
+  imageOverlay: {
+    padding: 12,
     backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderTopWidth: 1,
+    borderColor: colors.border,
   },
-  detailsTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
+  imageOverlayText: {
     color: colors.text,
-    marginBottom: 20,
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 16,
   },
-  detailLabel: {
-    fontSize: 16,
-    color: colors.textSecondary,
+  statBox: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
   },
-  detailValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  addDetailsButton: {
-    marginTop: 16,
-  },
-  addDetailsText: {
-    fontSize: 14,
+  statValue: {
+    fontSize: 24,
+    fontWeight: '800',
     color: colors.primary,
-    fontWeight: "600",
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    fontWeight: '600',
+  },
+  actionSection: {
+    alignItems: 'center',
+    marginTop: 10,
   },
   instructionText: {
     fontSize: 14,
     color: colors.textSecondary,
-    textAlign: "center",
     marginBottom: 16,
-    paddingHorizontal: 20,
-    lineHeight: 20,
   },
-  vacantFillingButton: {
-    backgroundColor: colors.primary,
-    margin: 16,
-    marginTop: 0,
-    padding: 18,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  vacantFillingText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  // Vacant Filling Details Screen Styles
-  vacantFillingContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  metricsCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+
+  // Vacant Filling Styles
   metricRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
+    borderBottomColor: "#F0F0F0",
   },
   lastMetricRow: {
     borderBottomWidth: 0,
   },
   metricLabel: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.textSecondary,
-    flex: 1,
   },
   metricValue: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "600",
     color: colors.text,
   },
-  graphCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  unit: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: 'normal',
   },
   graphPlaceholder: {
-    backgroundColor: "#E8E8E8",
+    backgroundColor: '#F8F9FA',
     borderRadius: 12,
-    height: 250,
+    height: 200,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+    borderStyle: 'dashed',
   },
   graphPlaceholderText: {
-    fontSize: 20,
-    color: "#999",
-    fontWeight: "500",
+    marginTop: 12,
+    color: colors.textSecondary,
+    fontSize: 14,
   },
-  confirmButton: {
-    backgroundColor: "#4CAF50",
-    margin: 16,
-    marginTop: 0,
-    padding: 18,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  confirmButtonText: {
-    color: colors.white,
+
+  // History Styles
+  listHeader: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 16,
+    marginLeft: 4,
   },
-  // History Screen Styles
   historyList: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: 20,
+    paddingBottom: 40,
   },
   historyCard: {
     backgroundColor: colors.white,
     borderRadius: 16,
-    padding: 16,
     marginBottom: 16,
     flexDirection: "row",
+    overflow: 'hidden',
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   historyImage: {
     width: 100,
-    height: 100,
-    borderRadius: 12,
-    marginRight: 16,
-    backgroundColor: "#E0E0E0",
+    height: "100%",
+    backgroundColor: "#F0F0F0",
   },
   historyDetails: {
     flex: 1,
-    justifyContent: "center",
+    padding: 12,
+  },
+  historyDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 6,
   },
   historyDate: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.textSecondary,
-    marginBottom: 8,
+    fontWeight: '500',
   },
-  historyText: {
-    fontSize: 15,
-    color: colors.text,
-    marginBottom: 4,
+  historyStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  historyLabel: {
-    fontWeight: "bold",
+  historyStat: {
+    alignItems: 'center',
+  },
+  historyDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#EEEEEE',
+  },
+  historyStatLabel: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  historyStatValue: {
+    fontSize: 12,
+    fontWeight: '700',
     color: colors.text,
   },
   loadMoreButton: {
-    backgroundColor: "#D3D3D3",
-    padding: 18,
-    borderRadius: 12,
+    padding: 15,
     alignItems: "center",
-    marginTop: 8,
   },
   loadMoreText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#666",
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: "500",
   },
 });
 

@@ -7,7 +7,7 @@ import { colors } from '../styles/colors';
 
 const { width } = Dimensions.get('window');
 
-const LoadingScreen = () => {
+const LoadingScreen = ({ navigation }) => {
     const spinValue = new Animated.Value(0);
     const pulseValue = new Animated.Value(1);
 
@@ -43,9 +43,15 @@ const LoadingScreen = () => {
         spinAnimation.start();
         pulseAnimation.start();
 
+        // Navigate to Splash screen after 3 seconds
+        const timer = setTimeout(() => {
+            navigation.replace('Splash');
+        }, 3000);
+
         return () => {
             spinAnimation.stop();
             pulseAnimation.stop();
+            clearTimeout(timer);
         };
     }, []);
 
