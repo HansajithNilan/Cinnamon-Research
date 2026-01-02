@@ -1,27 +1,15 @@
 
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
+import { View, StyleSheet, Animated, Easing, Dimensions, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../styles/colors';
 
 const { width } = Dimensions.get('window');
 
 const LoadingScreen = ({ navigation }) => {
-    const spinValue = new Animated.Value(0);
     const pulseValue = new Animated.Value(1);
 
     useEffect(() => {
-        // Rotation Animation
-        const spinAnimation = Animated.loop(
-            Animated.timing(spinValue, {
-                toValue: 1,
-                duration: 2000,
-                easing: Easing.linear,
-                useNativeDriver: true,
-            })
-        );
-
         // Pulse Animation
         const pulseAnimation = Animated.loop(
             Animated.sequence([
@@ -40,7 +28,6 @@ const LoadingScreen = ({ navigation }) => {
             ])
         );
 
-        spinAnimation.start();
         pulseAnimation.start();
 
         // Navigate to Splash screen after 3 seconds
@@ -49,16 +36,10 @@ const LoadingScreen = ({ navigation }) => {
         }, 3000);
 
         return () => {
-            spinAnimation.stop();
             pulseAnimation.stop();
             clearTimeout(timer);
         };
     }, []);
-
-    const spin = spinValue.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0deg', '360deg'],
-    });
 
     return (
         <View style={styles.container}>
@@ -71,26 +52,18 @@ const LoadingScreen = ({ navigation }) => {
                 <View style={styles.contentContainer}>
                     <Animated.View
                         style={[
-                            styles.iconContainer,
+                            styles.logoContainer,
                             {
-                                transform: [{ scale: pulseValue }, { rotate: spin }],
+                                transform: [{ scale: pulseValue }],
                             },
                         ]}
                     >
-                        <MaterialCommunityIcons name="loading" size={80} color={colors.white} />
+                        <Image
+                            source={require('../assets/logo.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
                     </Animated.View>
-
-                    <Animated.Text
-                        style={[
-                            styles.loadingText,
-                            {
-                                opacity: pulseValue, // Pulse the text opacity slightly
-                            }
-                        ]}
-                    >
-                        Loading
-                    </Animated.Text>
-                    <Text style={styles.subText}>Please wait a moment...</Text>
                 </View>
             </LinearGradient>
         </View>
@@ -110,8 +83,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    iconContainer: {
-        marginBottom: 30,
+    logoContainer: {
         shadowColor: colors.black,
         shadowOffset: {
             width: 0,
@@ -121,20 +93,9 @@ const styles = StyleSheet.create({
         shadowRadius: 4.65,
         elevation: 8,
     },
-    loadingText: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: colors.white,
-        marginBottom: 10,
-        letterSpacing: 1.5,
-        textShadowColor: 'rgba(0, 0, 0, 0.2)',
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 3,
-    },
-    subText: {
-        fontSize: 16,
-        color: 'rgba(255, 255, 255, 0.8)',
-        fontWeight: '500',
+    logo: {
+        width: 120,
+        height: 120,
     },
 });
 
