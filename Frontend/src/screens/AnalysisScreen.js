@@ -1,655 +1,507 @@
-import React, { useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Animated,
-  Dimensions,
-  Platform,
+  ScrollView,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { colors } from "../styles/colors";
+import { Ionicons } from "@expo/vector-icons";
+import Svg, { Circle } from "react-native-svg";
 
-const { width } = Dimensions.get("window");
-
-// Animated Progress Bar Component
-const ProgressBar = ({
-  label,
-  labelSinhala,
-  percentage,
-  status,
-  statusSinhala,
-  color,
-  gradientColors,
-  icon,
-  delay = 0,
-}) => {
-  const animatedWidth = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+const AnalysisScreen = ({ navigation, route }) => {
+  const [progress, setProgress] = useState(0);
+  const [animatedProgress] = useState(new Animated.Value(0));
+  const [analysisStage, setAnalysisStage] = useState(
+    "Scanning leaf structure..."
+  );
+  const [parameters, setParameters] = useState({
+    currentInfection: "Calculating...",
+    prediction1Day: "Calculating...",
+    prediction3Days: "Calculating...",
+    prediction7Days: "Calculating...",
+  });
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.delay(delay),
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + 4;
+      });
+    }, 120);
 
-    Animated.timing(animatedWidth, {
-      toValue: percentage,
-      duration: 1200,
-      delay: delay + 300,
+    Animated.timing(animatedProgress, {
+      toValue: progress,
+      duration: 120,
       useNativeDriver: false,
     }).start();
-  }, [percentage, delay]);
 
-  const getStatusIcon = () => {
-    if (percentage >= 70) return "checkmark-circle";
-    if (percentage >= 40) return "alert-circle";
-    return "close-circle";
+    // Update analysis stages
+    if (progress >= 15 && progress < 40) {
+      setAnalysisStage("Detecting fungal patterns...");
+    } else if (progress >= 40 && progress < 65) {
+      setAnalysisStage("Calculating spread rate...");
+    } else if (progress >= 65 && progress < 90) {
+      setAnalysisStage("Predicting infection growth...");
+    } else if (progress >= 90) {
+      setAnalysisStage("Finalizing predictions...");
+    }
+
+    if (progress >= 25 && parameters.currentInfection === "Calculating...") {
+      setTimeout(() => {
+        setParameters((prev) => ({
+          ...prev,
+          currentInfection: "12%",
+        }));
+      }, 400);
+    }
+
+    if (progress >= 50 && parameters.prediction1Day === "Calculating...") {
+      setTimeout(() => {
+        setParameters((prev) => ({
+          ...prev,
+          prediction1Day: "15%",
+        }));
+      }, 400);
+    }
+
+    if (progress >= 70 && parameters.prediction3Days === "Calculating...") {
+      setTimeout(() => {
+        setParameters((prev) => ({
+          ...prev,
+          prediction3Days: "28%",
+        }));
+      }, 400);
+    }
+
+    if (progress >= 90 && parameters.prediction7Days === "Calculating...") {
+      setTimeout(() => {
+        setParameters((prev) => ({
+          ...prev,
+          prediction7Days: "45%",
+        }));
+      }, 400);
+    }
+
+    return () => clearInterval(progressInterval);
+  }, [progress]);
+
+  const handleViewResults = () => {
+    navigation.navigate("Details", {
+      imageUri: route.params?.imageUri,
+      predictions: parameters,
+      progress: progress,
+    });
   };
 
-  return (
-    <Animated.View
-      style={[
-        styles.progressCard,
-        {
-          opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }],
-        },
-      ]}
-    >
-      <View style={styles.progressCardInner}>
-        {/* Icon and Label Section */}
-        <View style={styles.progressTopRow}>
-          <View style={[styles.iconContainer, { backgroundColor: `${color}15` }]}>
-            <MaterialCommunityIcons name={icon} size={24} color={color} />
-          </View>
-          <View style={styles.labelContainer}>
-            <Text style={styles.nutrientLabel}>{label}</Text>
-            <Text style={styles.nutrientLabelSinhala}>{labelSinhala}</Text>
-          </View>
-          <View style={[styles.percentageBadge, { backgroundColor: `${color}15` }]}>
-            <Text style={[styles.percentageText, { color: color }]}>
-              {percentage}%
-            </Text>
-          </View>
-        </View>
-
-        {/* Progress Bar */}
-        <View style={styles.progressBarWrapper}>
-          <View style={styles.progressBarBackground}>
-            <Animated.View
-              style={[
-                styles.progressBarFill,
-                {
-                  width: animatedWidth.interpolate({
-                    inputRange: [0, 100],
-                    outputRange: ["0%", "100%"],
-                  }),
-                },
-              ]}
-            >
-              <LinearGradient
-                colors={gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.gradientFill}
-              />
-            </Animated.View>
-          </View>
-        </View>
-
-        {/* Status Section */}
-        <View style={styles.statusRow}>
-          <View style={styles.statusBadge}>
-            <Ionicons
-              name={getStatusIcon()}
-              size={16}
-              color={color}
-              style={styles.statusIcon}
-            />
-            <Text style={[styles.statusText, { color: color }]}>{status}</Text>
-          </View>
-          <Text style={styles.statusTextSinhala}>{statusSinhala}</Text>
-        </View>
-      </View>
-    </Animated.View>
-  );
-};
-
-// Summary Card Component
-const SummaryCard = ({ title, value, subtitle, icon, color }) => (
-  <View style={[styles.summaryCard, { borderLeftColor: color }]}>
-    <View style={[styles.summaryIconContainer, { backgroundColor: `${color}15` }]}>
-      <Feather name={icon} size={20} color={color} />
-    </View>
-    <View style={styles.summaryContent}>
-      <Text style={styles.summaryValue}>{value}</Text>
-      <Text style={styles.summaryTitle}>{title}</Text>
-    </View>
-  </View>
-);
-
-export default function AnalysisScreen() {
-  const headerAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(headerAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
-  }, []);
+  const circumference = 2 * Math.PI * 90;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
     <View style={styles.container}>
-      {/* Gradient Header */}
-      <LinearGradient
-        colors={["#1B5E20", "#2E7D32", "#43A047"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
-      >
-        <Animated.View
-          style={[
-            styles.header,
-            {
-              opacity: headerAnim,
-              transform: [
-                {
-                  translateY: headerAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-20, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
         >
-          <TouchableOpacity style={styles.backButton} activeOpacity={0.7}>
-            <View style={styles.backButtonInner}>
-              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Nutrient Analysis</Text>
-            <Text style={styles.headerSubtitle}>පෝෂක විශ්ලේෂණය</Text>
-          </View>
-          <TouchableOpacity style={styles.moreButton} activeOpacity={0.7}>
-            <Feather name="more-vertical" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* Summary Stats */}
-        <Animated.View
-          style={[
-            styles.summaryRow,
-            {
-              opacity: headerAnim,
-            },
-          ]}
-        >
-          <SummaryCard
-            title="Total Nutrients"
-            value="3"
-            subtitle="Analyzed"
-            icon="layers"
-            color="#4CAF50"
-          />
-          <SummaryCard
-            title="Avg Level"
-            value="50%"
-            subtitle="Overall"
-            icon="trending-up"
-            color="#FF9800"
-          />
-          <SummaryCard
-            title="Deficits"
-            value="2"
-            subtitle="Found"
-            icon="alert-triangle"
-            color="#F44336"
-          />
-        </Animated.View>
-      </LinearGradient>
-
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Section Header */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <View style={styles.sectionIndicator} />
-            <Text style={styles.sectionTitle}>Current Deficits</Text>
-          </View>
-          <Text style={styles.sectionSubtitle}>
-            වත්මන් පෝෂක හිඟයන් • Real-time soil analysis
-          </Text>
-        </View>
-
-        {/* Nitrogen Progress */}
-        <ProgressBar
-          label="Nitrogen (N)"
-          labelSinhala="නයිට්රජන්"
-          percentage={20}
-          status="High Deficit"
-          statusSinhala="අධික හිඟය"
-          color="#E53935"
-          gradientColors={["#EF5350", "#E53935", "#C62828"]}
-          icon="leaf"
-          delay={100}
-        />
-
-        {/* Phosphorus Progress */}
-        <ProgressBar
-          label="Phosphorus (P)"
-          labelSinhala="පොස්පරස්"
-          percentage={50}
-          status="Moderate Deficit"
-          statusSinhala="මධ්‍යස්ථ හිඟය"
-          color="#FB8C00"
-          gradientColors={["#FFA726", "#FB8C00", "#EF6C00"]}
-          icon="atom"
-          delay={250}
-        />
-
-        {/* Potassium Progress */}
-        <ProgressBar
-          label="Potassium (K)"
-          labelSinhala="පොටෑසියම්"
-          percentage={80}
-          status="Optimal Level"
-          statusSinhala="ප්‍රශස්ත මට්ටම"
-          color="#43A047"
-          gradientColors={["#66BB6A", "#43A047", "#2E7D32"]}
-          icon="flask"
-          delay={400}
-        />
-
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <LinearGradient
-            colors={["#E8F5E9", "#C8E6C9"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.infoCardGradient}
-          >
-            <View style={styles.infoIconContainer}>
-              <Ionicons name="information-circle" size={28} color="#2E7D32" />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>Understanding Your Results</Text>
-              <Text style={styles.infoText}>
-                These percentages indicate the current nutrient levels in your soil.
-                Aim for higher percentages to ensure optimal plant growth.
-              </Text>
-              <View style={styles.infoDivider} />
-              <Text style={styles.infoTextSinhala}>
-                මෙම ප්‍රතිශත මඟින් ඔබේ පසෙහි පවතින පෝෂක මට්ටම් පෙන්නුම් කරයි.
-                ප්‍රශස්ත ශාක වර්ධනයක් සහතික කිරීම සඳහා ඉහළ ප්‍රතිශත ඉලක්ක කරන්න.
-              </Text>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Action Button */}
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.85}>
-          <LinearGradient
-            colors={["#43A047", "#2E7D32"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.actionButtonGradient}
-          >
-            <Feather name="zap" size={20} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>Get Recommendations</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-          </LinearGradient>
+          <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Analyzing Seedling</Text>
+        <View style={styles.placeholder} />
+      </View>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 130 }}
+      >
+        {/* Progress Circle */}
+        <View style={styles.progressSection}>
+          <View style={styles.circleContainer}>
+            <Svg width="240" height="240" style={styles.svg}>
+              {/* Background Circle */}
+              <Circle
+                cx="120"
+                cy="120"
+                r="90"
+                stroke="#E8F5E9"
+                strokeWidth="18"
+                fill="none"
+              />
+              {/* Progress Circle */}
+              <Circle
+                cx="120"
+                cy="120"
+                r="90"
+                stroke="#1B9568"
+                strokeWidth="18"
+                fill="none"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                transform="rotate(-90 120 120)"
+              />
+            </Svg>
+            <View style={styles.percentageContainer}>
+              <Text style={styles.percentageText}>{progress}%</Text>
+              <Text style={styles.percentageLabel}>Complete</Text>
+            </View>
+          </View>
+          <View style={styles.stageContainer}>
+            <View style={styles.loadingDots}>
+              <View style={[styles.dot, styles.dotAnimated1]} />
+              <View style={[styles.dot, styles.dotAnimated2]} />
+              <View style={[styles.dot, styles.dotAnimated3]} />
+            </View>
+            <Text style={styles.analyzingText}>{analysisStage}</Text>
+          </View>
+        </View>
 
-        <View style={styles.bottomSpacer} />
+        {/* Prediction Parameters */}
+        <View style={styles.predictionsSection}>
+          <Text style={styles.sectionTitle}>Infection Spread Predictions</Text>
+
+          {/* Current Infection */}
+          <View style={styles.predictionCard}>
+            <View style={styles.predictionHeader}>
+              <View style={styles.iconBadge}>
+                <Ionicons name="pulse" size={20} color="#1B9568" />
+              </View>
+              <Text style={styles.predictionLabel}>Current Infection Rate</Text>
+            </View>
+            <Text
+              style={[
+                styles.predictionValue,
+                parameters.currentInfection !== "Calculating..." &&
+                  styles.predictionValueCalculated,
+              ]}
+            >
+              {parameters.currentInfection}
+            </Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* 1 Day Prediction */}
+          <View style={styles.predictionCard}>
+            <View style={styles.predictionHeader}>
+              <View style={styles.iconBadge}>
+                <Ionicons name="time-outline" size={20} color="#10B981" />
+              </View>
+              <Text style={styles.predictionLabel}>1 Day Prediction</Text>
+            </View>
+            <Text
+              style={[
+                styles.predictionValue,
+                parameters.prediction1Day !== "Calculating..." &&
+                  styles.predictionValueCalculated,
+              ]}
+            >
+              {parameters.prediction1Day}
+            </Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* 3 Days Prediction */}
+          <View style={styles.predictionCard}>
+            <View style={styles.predictionHeader}>
+              <View style={[styles.iconBadge, styles.iconBadgeWarning]}>
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={20}
+                  color="#F59E0B"
+                />
+              </View>
+              <Text style={styles.predictionLabel}>3 Days Prediction</Text>
+            </View>
+            <View style={styles.predictionValueContainer}>
+              <Text
+                style={[
+                  styles.predictionValue,
+                  parameters.prediction3Days !== "Calculating..." &&
+                    styles.predictionValueWarning,
+                ]}
+              >
+                {parameters.prediction3Days}
+              </Text>
+              {parameters.prediction3Days !== "Calculating..." && (
+                <View style={styles.riskBadge}>
+                  <Text style={styles.riskBadgeText}>High Risk</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* 7 Days Prediction */}
+          <View style={styles.predictionCard}>
+            <View style={styles.predictionHeader}>
+              <View style={[styles.iconBadge, styles.iconBadgeDanger]}>
+                <Ionicons name="warning-outline" size={20} color="#EF4444" />
+              </View>
+              <Text style={styles.predictionLabel}>7 Days Prediction</Text>
+            </View>
+            <View style={styles.predictionValueContainer}>
+              <Text
+                style={[
+                  styles.predictionValue,
+                  parameters.prediction7Days !== "Calculating..." &&
+                    styles.predictionValueDanger,
+                ]}
+              >
+                {parameters.prediction7Days}
+              </Text>
+              {parameters.prediction7Days !== "Calculating..." && (
+                <View style={[styles.riskBadge, styles.riskBadgeDanger]}>
+                  <Text style={styles.riskBadgeText}>Critical</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
       </ScrollView>
+      {/* View Results Button */}
+      <View style={styles.bottomSection}>
+        <TouchableOpacity
+          style={[
+            styles.resultsButton,
+            progress < 100 && styles.resultsButtonDisabled,
+          ]}
+          onPress={handleViewResults}
+          disabled={progress < 100}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.resultsButtonText}>View Detailed Results</Text>
+          <Ionicons name="arrow-forward" size={20} color="#FFF" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
+  content: {
+    flex: 1,
+    paddingHorizontal: 10,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#F8FAF8",
-  },
-  headerGradient: {
-    paddingTop: Platform.OS === "ios" ? 50 : 40,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#1B5E20",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 12,
-      },
-    }),
+    backgroundColor: "#F9FAFB",
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingVertical: 12,
+    paddingTop: 50,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 3,
   },
   backButton: {
-    padding: 4,
-  },
-  backButtonInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  moreButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerTitleContainer: {
-    alignItems: "center",
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#111827",
     letterSpacing: 0.5,
   },
-  headerSubtitle: {
-    fontSize: 13,
-    color: "rgba(255, 255, 255, 0.85)",
-    marginTop: 2,
+  placeholder: {
+    width: 32,
   },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    marginTop: 4,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 14,
-    padding: 12,
-    marginHorizontal: 4,
-    flexDirection: "row",
+  progressSection: {
     alignItems: "center",
-    borderLeftWidth: 3,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  summaryIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
     justifyContent: "center",
+    paddingVertical: 40,
+    paddingTop: 30,
+  },
+  circleContainer: {
+    position: "relative",
+    width: 240,
+    height: 240,
     alignItems: "center",
-    marginRight: 10,
-  },
-  summaryContent: {
-    flex: 1,
-  },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1A1A",
-  },
-  summaryTitle: {
-    fontSize: 11,
-    color: "#666",
-    marginTop: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: 24,
-    paddingHorizontal: 20,
-  },
-  sectionHeader: {
+    justifyContent: "center",
     marginBottom: 20,
   },
-  sectionTitleRow: {
-    flexDirection: "row",
+  svg: {
+    position: "absolute",
+  },
+  percentageContainer: {
     alignItems: "center",
-    marginBottom: 6,
-  },
-  sectionIndicator: {
-    width: 4,
-    height: 24,
-    backgroundColor: "#43A047",
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    letterSpacing: 0.3,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: "#757575",
-    marginLeft: 16,
-  },
-  progressCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    marginBottom: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  progressCardInner: {
-    padding: 20,
-  },
-  progressTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
     justifyContent: "center",
-    alignItems: "center",
-  },
-  labelContainer: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  nutrientLabel: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    letterSpacing: 0.2,
-  },
-  nutrientLabelSinhala: {
-    fontSize: 13,
-    color: "#757575",
-    marginTop: 2,
-  },
-  percentageBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
   },
   percentageText: {
-    fontSize: 20,
+    fontSize: 52,
     fontWeight: "700",
+    color: "#10B981",
   },
-  progressBarWrapper: {
-    marginBottom: 14,
-  },
-  progressBarBackground: {
-    height: 10,
-    backgroundColor: "#F0F0F0",
-    borderRadius: 5,
-    overflow: "hidden",
-  },
-  progressBarFill: {
-    height: "100%",
-    borderRadius: 5,
-    overflow: "hidden",
-  },
-  gradientFill: {
-    flex: 1,
-    borderRadius: 5,
-  },
-  statusRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statusIcon: {
-    marginRight: 6,
-  },
-  statusText: {
+  percentageLabel: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
+    color: "#6B7280",
+    marginTop: 4,
   },
-  statusTextSinhala: {
-    fontSize: 13,
-    color: "#9E9E9E",
-  },
-  infoCard: {
-    borderRadius: 20,
-    overflow: "hidden",
-    marginTop: 8,
-    marginBottom: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#2E7D32",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  infoCardGradient: {
-    flexDirection: "row",
-    padding: 20,
-  },
-  infoIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "rgba(46, 125, 50, 0.15)",
-    justifyContent: "center",
+  stageContainer: {
     alignItems: "center",
-    marginRight: 14,
   },
-  infoContent: {
-    flex: 1,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1B5E20",
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: "#2E7D32",
-    lineHeight: 20,
-  },
-  infoDivider: {
-    height: 1,
-    backgroundColor: "rgba(46, 125, 50, 0.2)",
-    marginVertical: 12,
-  },
-  infoTextSinhala: {
-    fontSize: 13,
-    color: "#388E3C",
-    lineHeight: 20,
-  },
-  actionButton: {
-    borderRadius: 16,
-    overflow: "hidden",
+  loadingDots: {
+    flexDirection: "row",
+    gap: 6,
     marginBottom: 10,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#2E7D32",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
   },
-  actionButtonGradient: {
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#10B981",
+  },
+  analyzingText: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#10B981",
+  },
+  predictionsSection: {
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 20,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    paddingBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 18,
+  },
+  predictionCard: {
+    paddingVertical: 14,
+  },
+  predictionHeader: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 10,
+  },
+  iconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#D1FAE5",
+    alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 18,
-    paddingHorizontal: 24,
-    gap: 10,
+    marginRight: 12,
   },
-  actionButtonText: {
-    fontSize: 17,
+  iconBadgeWarning: {
+    backgroundColor: "#FEF3C7",
+  },
+  iconBadgeDanger: {
+    backgroundColor: "#FEE2E2",
+  },
+  predictionLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  predictionValueContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingLeft: 6,
+  },
+  predictionValue: {
+    fontSize: 32,
     fontWeight: "700",
-    color: "#FFFFFF",
-    letterSpacing: 0.3,
+    color: "#D1D5DB",
   },
-  bottomSpacer: {
-    height: 30,
+  predictionValueCalculated: {
+    color: "#10B981",
+  },
+  predictionValueWarning: {
+    color: "#F59E0B",
+  },
+  predictionValueDanger: {
+    color: "#EF4444",
+  },
+  riskBadge: {
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  riskBadgeDanger: {
+    backgroundColor: "#FEE2E2",
+  },
+  riskBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#92400E",
+    textTransform: "uppercase",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#F3F4F6",
+    marginVertical: 4,
+  },
+  bottomSection: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    paddingBottom: 40,
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  resultsButton: {
+    backgroundColor: "#10B981",
+    paddingVertical: 16,
+    borderRadius: 30,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  resultsButtonDisabled: {
+    backgroundColor: "#D1D5DB",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+  },
+  resultsButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });
+
+export default AnalysisScreen;
