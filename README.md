@@ -163,14 +163,3 @@
 
 <hr/>
 
-<h2>Version Control &amp; Collaboration</h2>
-<p>
-  This project uses GitHub for version control and collaborative development.
-  The repository maintains a complete history of commits, branches, and merges,
-  ensuring transparency of individual and team contributions.
-</p>
-
-<hr/>
-
-<h2>License</h2>
-<p>Academic use only – Final Year Project</p>
