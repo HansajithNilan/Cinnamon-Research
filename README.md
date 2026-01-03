@@ -55,7 +55,7 @@
 
 <p>
   <b>Architecture Diagram:</b><br/>
-  <img src="docs/architecture/system_architecture.png" alt="System Architecture" width="900"/>
+  <img src="Frontend/assets/Picture1.jpg" alt="System Architecture" width="900"/>
 </p>
 
 <hr/>
