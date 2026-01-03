@@ -7,10 +7,23 @@ import {
   SafeAreaView,
   TouchableOpacity,
 } from "react-native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../styles/colors";
 
-const DashboardScreen = () => {
+// Import screens
+import SensorScreen from "./SensorScreen";
+// Assuming ComparisonScreen and SuggestionScreen exist or will be created/imported correctly.
+// If not, we might need placeholders, but user requested these specific imports.
+import ComparisonScreen from "./ComparisonScreen";
+import SuggestionScreen from "./SuggestionScreen";
+
+const Tab = createBottomTabNavigator();
+
+const DashboardContent = () => {
+  const navigation = useNavigation();
   const standards = [
     {
       id: 1,
@@ -26,7 +39,7 @@ const DashboardScreen = () => {
       title: "Humidity",
       description: "Avoids mold growth and maintains stick...",
       value: "60-70% RH",
-      valueColor: "#FF9500",
+      valueColor: "#edbf7eff",
     },
     {
       id: 3,
@@ -55,12 +68,38 @@ const DashboardScreen = () => {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dashboard</Text>
-        <TouchableOpacity style={styles.menuButton}>
-          <Ionicons name="ellipsis-vertical" size={24} color="#000" />
-        </TouchableOpacity>
+    <View style={styles.container}>
+      {/* Header Section */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={[colors.primary, colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={{ marginRight: 15 }}
+              >
+                <Ionicons name="arrow-back" size={28} color={colors.white} />
+              </TouchableOpacity>
+              <View>
+                <Text style={styles.greetingText}>Welcome Back,</Text>
+                <Text style={styles.brandText}>Warehouse Quality</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.profileButton}>
+              <Ionicons
+                name="person-circle-outline"
+                size={36}
+                color={colors.white}
+              />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       </View>
 
       <ScrollView
@@ -87,7 +126,66 @@ const DashboardScreen = () => {
           </View>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
+  );
+};
+
+// Main Tab Navigator Component
+const DashboardNavigator = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === "Dashboard") {
+            iconName = focused ? "grid" : "grid-outline";
+          } else if (route.name === "Sensor") {
+            iconName = focused ? "hardware-chip" : "hardware-chip-outline";
+          } else if (route.name === "Comparison") {
+            iconName = focused
+              ? "swap-horizontal"
+              : "swap-horizontal-outline";
+          } else if (route.name === "Suggestion") {
+            iconName = focused ? "bulb" : "bulb-outline";
+          }
+
+          return <Ionicons name={iconName} size={20} color={color} />;
+        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: {
+          height: 65,
+          paddingBottom: 8,
+          paddingTop: 8,
+          backgroundColor: colors.white,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: {
+            width: 0,
+            height: -2,
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: 3,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "600",
+          marginTop: 2,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 5,
+        },
+        headerShown: false,
+      })}
+    >
+      <Tab.Screen name="Dashboard" component={DashboardContent} />
+      <Tab.Screen name="Sensor" component={SensorScreen} />
+      <Tab.Screen name="Comparison" component={ComparisonScreen} />
+      <Tab.Screen name="Suggestion" component={SuggestionScreen} />
+    </Tab.Navigator>
   );
 };
 
@@ -96,29 +194,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F5F5",
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  headerWrapper: {
+    marginBottom: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  headerGradient: {
+    paddingTop: 60,
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
+    paddingBottom: 30,
   },
-  headerTitle: {
-    fontSize: 22,
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  greetingText: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "500",
+  },
+  brandText: {
+    fontSize: 24,
+    color: colors.white,
     fontWeight: "bold",
-    color: "#000",
-    flex: 1,
-    textAlign: "center",
-    marginRight: 24,
-    paddingTop: 10,
-    marginTop: 10,
   },
-  menuButton: {
+  profileButton: {
     padding: 4,
-    marginTop: 10,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 20,
   },
   scrollView: {
     flex: 1,
@@ -175,4 +285,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DashboardScreen;
+export default DashboardNavigator;

@@ -18,6 +18,7 @@ import Svg, {
   Circle,
 } from "react-native-svg";
 
+import { colors } from "../styles/colors";
 const { width } = Dimensions.get("window");
 
 const AnalysisDetailsScreen = ({ navigation, route }) => {
@@ -52,17 +53,33 @@ const AnalysisDetailsScreen = ({ navigation, route }) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={[colors.primary, colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
         >
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Prediction Report</Text>
-        <TouchableOpacity style={styles.shareButton}>
-          <Ionicons name="share-outline" size={24} color="#000" />
-        </TouchableOpacity>
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
+                <Ionicons name="arrow-back" size={24} color={colors.white} />
+              </TouchableOpacity>
+              <View>
+                <Text style={styles.greetingText}>Detailed Report</Text>
+                <Text style={styles.brandText}>Prediction Analysis</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.profileButton}>
+              <Ionicons
+                name="person-circle-outline"
+                size={36}
+                color={colors.white}
+              />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       </View>
 
       <ScrollView
@@ -156,9 +173,8 @@ const AnalysisDetailsScreen = ({ navigation, route }) => {
               {[0, 1, 2, 3, 4].map((i) => (
                 <Path
                   key={i}
-                  d={`M 0 ${(chartHeight / 4) * i} L ${chartWidth} ${
-                    (chartHeight / 4) * i
-                  }`}
+                  d={`M 0 ${(chartHeight / 4) * i} L ${chartWidth} ${(chartHeight / 4) * i
+                    }`}
                   stroke="#F0F0F0"
                   strokeWidth="1"
                 />
@@ -364,33 +380,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F9FAFB",
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    paddingTop: 50,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+  headerWrapper: {
+    marginBottom: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  backButton: {
-    padding: 8,
+  headerGradient: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-    letterSpacing: 0.5,
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  shareButton: {
-    padding: 8,
+  greetingText: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "500",
+  },
+  brandText: {
+    fontSize: 24,
+    color: colors.white,
+    fontWeight: "bold",
+  },
+  profileButton: {
+    padding: 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 20,
   },
   scrollView: {
     flex: 1,

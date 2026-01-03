@@ -10,18 +10,14 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
+import { colors } from "../styles/colors";
 
 const ImageScreen = ({ navigation }) => {
   const [selectedImage, setSelectedImage] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-
-  const showImageOptions = () => {
-    setModalVisible(true);
-  };
 
   const pickImageFromGallery = async () => {
-    setModalVisible(false);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (status !== "granted") {
@@ -45,7 +41,6 @@ const ImageScreen = ({ navigation }) => {
   };
 
   const takePhoto = async () => {
-    setModalVisible(false);
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
     if (status !== "granted") {
@@ -75,15 +70,43 @@ const ImageScreen = ({ navigation }) => {
     }
   };
 
+  const clearSelection = () => {
+    setSelectedImage(null);
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.menuButton}>
-          <Ionicons name="menu" size={28} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Cinnamon Guard</Text>
-        <View style={styles.placeholder} />
+      {/* Header Section */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={[colors.primary, colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={{ marginRight: 15 }}
+              >
+                <Ionicons name="arrow-back" size={28} color={colors.white} />
+              </TouchableOpacity>
+              <View>
+                <Text style={styles.greetingText}>Welcome Back,</Text>
+                <Text style={styles.brandText}>Cinnamon Guard</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.profileButton}>
+              <Ionicons
+                name="person-circle-outline"
+                size={36}
+                color={colors.white}
+              />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -106,11 +129,7 @@ const ImageScreen = ({ navigation }) => {
         </View>
 
         {/* Upload Box */}
-        <TouchableOpacity
-          style={styles.uploadBox}
-          onPress={showImageOptions}
-          activeOpacity={0.7}
-        >
+        <View style={styles.uploadBox}>
           {selectedImage ? (
             <View style={styles.imagePreviewContainer}>
               <Image
@@ -119,10 +138,10 @@ const ImageScreen = ({ navigation }) => {
               />
               <TouchableOpacity
                 style={styles.changeImageButton}
-                onPress={showImageOptions}
+                onPress={clearSelection}
               >
-                <Ionicons name="camera" size={20} color="#FFF" />
-                <Text style={styles.changeImageText}>Change</Text>
+                <Ionicons name="close-circle" size={20} color="#FFF" />
+                <Text style={styles.changeImageText}>Remove</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -137,12 +156,27 @@ const ImageScreen = ({ navigation }) => {
                 Take a photo of the infected seedling leaf or choose from
                 gallery
               </Text>
-              <View style={styles.chooseButton}>
-                <Text style={styles.chooseButtonText}>Select Image</Text>
+
+              <View style={styles.actionButtonsContainer}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={takePhoto}
+                >
+                  <Ionicons name="camera" size={24} color="#FFF" />
+                  <Text style={styles.actionButtonText}>Take Photo</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.galleryButton]}
+                  onPress={pickImageFromGallery}
+                >
+                  <Ionicons name="images" size={24} color="#10B981" />
+                  <Text style={[styles.actionButtonText, styles.galleryButtonText]}>Gallery</Text>
+                </TouchableOpacity>
               </View>
             </>
           )}
-        </TouchableOpacity>
+        </View>
 
         {/* Tips Section */}
         <View style={styles.tipsSection}>
@@ -181,57 +215,6 @@ const ImageScreen = ({ navigation }) => {
           <Ionicons name="arrow-forward" size={20} color="#FFF" />
         </TouchableOpacity>
       </View>
-
-      {/* Image Options Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Choose Image Source</Text>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={takePhoto}
-              activeOpacity={0.7}
-            >
-              <View style={styles.modalOptionIcon}>
-                <Ionicons name="camera" size={24} color="#5A6B47" />
-              </View>
-              <Text style={styles.modalOptionText}>Take Photo</Text>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={pickImageFromGallery}
-              activeOpacity={0.7}
-            >
-              <View style={styles.modalOptionIcon}>
-                <Ionicons name="images" size={24} color="#5A6B47" />
-              </View>
-              <Text style={styles.modalOptionText}>Choose from Gallery</Text>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalCancelButton}
-              onPress={() => setModalVisible(false)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 };
@@ -241,33 +224,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F9FAFB",
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    paddingTop: 50,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+  headerWrapper: {
+    marginBottom: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  menuButton: {
-    padding: 8,
+  headerGradient: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-    letterSpacing: 0.5,
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  placeholder: {
-    width: 36,
+  greetingText: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "500",
+  },
+  brandText: {
+    fontSize: 24,
+    color: colors.white,
+    fontWeight: "bold",
+  },
+  profileButton: {
+    padding: 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 20,
   },
   content: {
     flex: 1,
@@ -313,7 +304,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#E5E7EB",
     borderStyle: "dashed",
-    padding: 40,
+    padding: 30,
     alignItems: "center",
     justifyContent: "center",
     minHeight: 280,
@@ -346,7 +337,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 12,
     right: 12,
-    backgroundColor: "rgba(16, 185, 129, 0.95)",
+    backgroundColor: "rgba(220, 38, 38, 0.95)",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
@@ -382,21 +373,42 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingHorizontal: 10,
   },
-  chooseButton: {
-    backgroundColor: "#10B981",
-    paddingHorizontal: 40,
-    paddingVertical: 14,
-    borderRadius: 25,
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 15,
+    width: '100%',
+    paddingHorizontal: 10,
   },
-  chooseButtonText: {
-    fontSize: 16,
+  actionButton: {
+    flex: 1,
+    backgroundColor: "#10B981",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionButtonText: {
+    fontSize: 14,
     fontWeight: "600",
     color: "#FFFFFF",
+  },
+  galleryButton: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#10B981",
+    shadowColor: "transparent",
+    elevation: 0,
+  },
+  galleryButtonText: {
+    color: "#10B981",
   },
   tipsSection: {
     backgroundColor: "#FFFFFF",
@@ -469,74 +481,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 36,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 24,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  modalOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  modalOptionIcon: {
-    width: 44,
-    height: 44,
-    backgroundColor: "#D1FAE5",
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  modalOptionText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  modalCancelButton: {
-    backgroundColor: "#F9FAFB",
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  modalCancelText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#6B7280",
   },
 });
 

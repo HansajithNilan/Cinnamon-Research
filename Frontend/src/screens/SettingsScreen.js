@@ -9,20 +9,44 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../styles/colors";
+import { LinearGradient } from "expo-linear-gradient";
+import { useNavigation } from "@react-navigation/native";
 
 export default function SettingsScreen() {
+  const navigation = useNavigation();
   const [isEnglishEnabled, setIsEnglishEnabled] = useState(true);
   const [isSinhalaEnabled, setIsSinhalaEnabled] = useState(false);
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <View style={{ width: 24 }} />
+      {/* Header Section */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={[colors.primary, colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
+                <Ionicons name="arrow-back" size={24} color={colors.white} />
+              </TouchableOpacity>
+              <View>
+                <Text style={styles.greetingText}>User Preferences</Text>
+                <Text style={styles.brandText}>App Settings</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.profileButton}>
+              <Ionicons
+                name="person-circle-outline"
+                size={36}
+                color={colors.white}
+              />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       </View>
 
       {/* Content */}
@@ -114,28 +138,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  header: {
+  headerWrapper: {
+    marginBottom: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  headerGradient: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+  },
+  topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
   },
-  backButton: {
-    paddingTop: 25,
+  greetingText: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "500",
   },
-  headerTitle: {
-    fontSize: 18,
+  brandText: {
+    fontSize: 24,
+    color: colors.white,
     fontWeight: "bold",
-    color: "#000",
-    flex: 1,
-    textAlign: "center",
-    marginRight: -10,
-    paddingTop: 15,
-    marginTop: 10,
+  },
+  profileButton: {
+    padding: 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 20,
   },
   content: {
     flex: 1,

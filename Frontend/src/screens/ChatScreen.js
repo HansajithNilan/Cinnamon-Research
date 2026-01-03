@@ -13,11 +13,13 @@ import {
   StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { colors } from "../styles/colors";
 
 const ChatScreen = () => {
+  const navigation = useNavigation();
   const [messages, setMessages] = useState([
     {
       id: "1",
@@ -172,13 +174,18 @@ const ChatScreen = () => {
       {/* Header */}
       <View style={styles.headerWrapper}>
         <LinearGradient
-          colors={[colors.primary, colors.primaryDark]}
+          colors={[colors.primary, colors.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>AI Assistant</Text>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
+                <Ionicons name="arrow-back" size={24} color={colors.white} />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>AI Assistant</Text>
+            </View>
             <View style={styles.onlineBadgeContainer}>
               <View style={styles.onlineBadge} />
               <Text style={styles.onlineText}>Online</Text>

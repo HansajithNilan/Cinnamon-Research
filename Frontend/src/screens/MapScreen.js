@@ -8,17 +8,42 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../styles/colors";
+import { useNavigation } from "@react-navigation/native";
 
 export default function MapScreen() {
+  const navigation = useNavigation();
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Field Map</Text>
-        <TouchableOpacity style={styles.menuButton}>
-          <Ionicons name="menu" size={28} color="#000" />
-        </TouchableOpacity>
+      {/* Header Section */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={[colors.primary, colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
+                <Ionicons name="arrow-back" size={24} color={colors.white} />
+              </TouchableOpacity>
+              <View>
+                <Text style={styles.greetingText}>Field Monitor</Text>
+                <Text style={styles.brandText}>Live Map</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.profileButton}>
+              <Ionicons
+                name="person-circle-outline"
+                size={36}
+                color={colors.white}
+              />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       </View>
 
       {/* Map Container */}
@@ -131,25 +156,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  header: {
+  headerWrapper: {
+    marginBottom: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  headerGradient: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+  },
+  topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 50,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
   },
-  headerTitle: {
-    fontSize: 18,
+  greetingText: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "500",
+  },
+  brandText: {
+    fontSize: 24,
+    color: colors.white,
     fontWeight: "bold",
-    color: "#000",
-    flex: 1,
   },
-  menuButton: {
-    padding: 5,
+  profileButton: {
+    padding: 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 20,
   },
   mapContainer: {
     height: "50%",

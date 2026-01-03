@@ -1,28 +1,5 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import { createStackNavigator } from "@react-navigation/stack";
-import ImageScreen from "./src/screens/ImageScreen";
-import AnalysisScreen from "./src/screens/AnalysisScreen";
-import AnalysisDetailsScreen from "./src/screens/AnalysisDetailsScreen";
-import GuideScreen from "./src/screens/GuideScreen";
-import { StatusBar } from "expo-status-bar";
-
-const Stack = createStackNavigator();
-
-export default function App() {
-  return (
-    <NavigationContainer>
-      <StatusBar style="dark" />
-      <Stack.Navigator
-        initialRouteName="Image"
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen name="Image" component={ImageScreen} />
-        <Stack.Screen name="Analysis" component={AnalysisScreen} />
-        <Stack.Screen name="Details" component={AnalysisDetailsScreen} />
-        <Stack.Screen name="Guide" component={GuideScreen} />
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -45,6 +22,15 @@ import SplashScreen from "./src/screens/SplashScreen";
 import LoginScreen from "./src/screens/LoginScreen";
 import SignupScreen from "./src/screens/SignupScreen";
 import LoadingScreen from "./src/screens/LoadingScreen";
+import GuideScreen from "./src/screens/GuideScreen";
+import ImageScreen from "./src/screens/ImageScreen";
+import SensorScreen from "./src/screens/SensorScreen";
+import soilDashboard from "./src/screens/soilDashboard";
+import SoilAnalyzeScreen from "./src/screens/soilAnalyzeScreen";
+import VacantAreaHomeScreen from "./src/screens/vacantAreaHome";
+import AnalysisDetailsScreen from "./src/screens/AnalysisDetailsScreen";
+import GeneralSettingsScreen from "./src/screens/GeneralSettingsScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -58,10 +44,10 @@ function MainTabNavigator() {
 
           if (route.name === "Home") {
             iconName = focused ? "home" : "home-outline";
-          } else if (route.name === "Analyze") {
-            iconName = focused ? "document-text" : "document-text-outline";
-          } else if (route.name === "Chat") {
-            iconName = focused ? "chatbubbles" : "chatbubbles-outline";
+          } else if (route.name === "Settings") {
+            iconName = focused ? "settings" : "settings-outline";
+          } else if (route.name === "Profile") {
+            iconName = focused ? "person" : "person-outline";
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -85,8 +71,8 @@ function MainTabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Analyze" component={AnalyzeScreen} />
-      <Tab.Screen name="Chat" component={ChatScreen} />
+      <Tab.Screen name="Settings" component={GeneralSettingsScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -104,6 +90,18 @@ export default function App() {
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="Loading" component={LoadingScreen} />
         <Stack.Screen name="Main" component={MainTabNavigator} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="Guide" component={GuideScreen} />
+        <Stack.Screen name="Image" component={ImageScreen} />
+        <Stack.Screen name="Sensor" component={SensorScreen} />
+        <Stack.Screen name="SoilDashboard" component={soilDashboard} />
+
+        <Stack.Screen name="SoilAnalyze" component={SoilAnalyzeScreen} />
+        <Stack.Screen name="vacantAreaHome" component={VacantAreaHomeScreen} />
+        <Stack.Screen name="Analysis" component={AnalysisScreen} />
+        <Stack.Screen name="Details" component={AnalysisDetailsScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+
       </Stack.Navigator>
     </NavigationContainer>
   );

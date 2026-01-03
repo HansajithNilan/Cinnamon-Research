@@ -177,7 +177,7 @@ const AnalysisScreen = ({ navigation, route }) => {
               style={[
                 styles.predictionValue,
                 parameters.currentInfection !== "Calculating..." &&
-                  styles.predictionValueCalculated,
+                styles.predictionValueCalculated,
               ]}
             >
               {parameters.currentInfection}
@@ -198,7 +198,7 @@ const AnalysisScreen = ({ navigation, route }) => {
               style={[
                 styles.predictionValue,
                 parameters.prediction1Day !== "Calculating..." &&
-                  styles.predictionValueCalculated,
+                styles.predictionValueCalculated,
               ]}
             >
               {parameters.prediction1Day}
@@ -224,7 +224,7 @@ const AnalysisScreen = ({ navigation, route }) => {
                 style={[
                   styles.predictionValue,
                   parameters.prediction3Days !== "Calculating..." &&
-                    styles.predictionValueWarning,
+                  styles.predictionValueWarning,
                 ]}
               >
                 {parameters.prediction3Days}
@@ -252,7 +252,7 @@ const AnalysisScreen = ({ navigation, route }) => {
                 style={[
                   styles.predictionValue,
                   parameters.prediction7Days !== "Calculating..." &&
-                    styles.predictionValueDanger,
+                  styles.predictionValueDanger,
                 ]}
               >
                 {parameters.prediction7Days}

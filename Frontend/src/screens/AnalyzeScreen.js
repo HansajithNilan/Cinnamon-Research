@@ -15,10 +15,12 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../styles/colors";
+import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
 const AnalyzeScreen = () => {
+  const navigation = useNavigation();
   const [selectedImage, setSelectedImage] = useState(null);
   const [isDetecting, setIsDetecting] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -100,11 +102,19 @@ const AnalyzeScreen = () => {
     setShowResults(false);
   };
 
-  const handleBackToUpload = () => {
-    setShowResults(false);
-    setShowVacantFilling(false);
-    setShowHistory(false);
-    setSelectedImage(null);
+  const handleBack = () => {
+    if (showResults) {
+      setShowResults(false);
+      setSelectedImage(null); // Go back to upload state
+      return;
+    }
+    if (showHistory) {
+      setShowHistory(false);
+      setSelectedImage(null); // Go back to upload state
+      return;
+    }
+    // Default back navigation
+    navigation.goBack();
   };
 
   const handleBackToResults = () => {
@@ -137,7 +147,7 @@ const AnalyzeScreen = () => {
   const Header = ({ title, showBack, onBack }) => (
     <View style={styles.headerWrapper}>
       <LinearGradient
-        colors={[colors.primary, colors.primaryDark]}
+        colors={[colors.primary, colors.primary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
