@@ -1,4 +1,4 @@
-<img src="Frontend/assets/Picture1.jpg" alt="System Architecture" width="900"/>
+<img src="Frontend/assets/cover.png" alt="System Architecture" width="900"/>
 
 
 <h1 align="center">SMARTCINNAMON</h1>
