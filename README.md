@@ -134,6 +134,7 @@
 <hr/>
 
 <h2>Team Members &amp; Contributions</h2>
+<h2>Team Members &amp; Contributions</h2>
 <table>
   <thead>
     <tr>
@@ -143,23 +144,40 @@
   </thead>
   <tbody>
     <tr>
-      <td>Member 1</td>
+      <td>
+        <a href="https://github.com/divanavihani" target="_blank">
+          Member 1
+        </a>
+      </td>
       <td>Post-harvest quality monitoring</td>
     </tr>
     <tr>
-      <td>Member 2</td>
+      <td>
+        <a href="https://github.com/member2-username" target="_blank">
+          Member 2
+        </a>
+      </td>
       <td>Fungal disease prediction</td>
     </tr>
     <tr>
-      <td>Member 3</td>
+      <td>
+        <a href="https://github.com/madushabangamuwage2001" target="_blank">
+          Member 3
+        </a>
+      </td>
       <td>Soil analysis and fertilizer recommendation</td>
     </tr>
     <tr>
-      <td>Member 4</td>
+      <td>
+        <a href="https://github.com/HansajithNilan" target="_blank">
+          Member 4
+        </a>
+      </td>
       <td>GIS-based vacant area detection and yield forecasting</td>
     </tr>
   </tbody>
 </table>
+
 
 <hr/>
 
