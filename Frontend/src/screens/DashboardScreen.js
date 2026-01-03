@@ -26,7 +26,7 @@ const DashboardScreen = () => {
       title: "Humidity",
       description: "Avoids mold growth and maintains stick...",
       value: "60-70% RH",
-      valueColor: "#edbf7eff",
+      valueColor: "#FF9500",
     },
     {
       id: 3,
