@@ -113,11 +113,5 @@
 
 <hr/>
 
-<h2>Version Control &amp; Collaboration</h2>
-<p>
-  This project uses GitHub for version control and team collaboration. The repository maintains a complete history of
-  commits, branches, and merges to ensure transparent contribution tracking and structured development practices.
-</p>
 
-<hr/>
 
