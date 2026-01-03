@@ -121,20 +121,3 @@
 
 <hr/>
 
-<h2>Suggested Repository Structure</h2>
-<pre>
-smartcinnamon/
-│── src/
-│   ├── iot-services/
-│   ├── ml-services/
-│   ├── gis-services/
-│   ├── web-dashboard/
-│   └── mobile-app/
-│── docs/
-│   └── architecture/
-│── diagrams/
-│── README.md
-</pre>
-
-<hr/>
-
