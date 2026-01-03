@@ -13,9 +13,9 @@
 </p>
 <p>
   The project addresses critical challenges across the cinnamon lifecycle, including soil nutrient management,
-  disease prediction, plantation land utilization, and post-harvest quality preservation. By integrating multiple
-  system capabilities into a single platform, SMARTCINNAMON enables data-driven decision-making for farmers,
-  warehouse managers, and exporters.
+  disease prediction, plantation land utilization, and post-harvest quality preservation. By integrating
+  multiple system capabilities into a single platform, SMARTCINNAMON enables data-driven decision-making
+  for farmers, warehouse managers, and exporters.
 </p>
 
 <hr/>
@@ -48,7 +48,7 @@
 <p>The system follows a layered architecture:</p>
 <ul>
   <li><b>Data Collection Layer:</b> IoT sensors, mobile image capture, satellite/drone imagery</li>
-  <li><b>Processing &amp; Intelligence Layer:</b> ML models, image processing, GIS analysis</li>
+  <li><b>Processing &amp; Intelligence Layer:</b> Machine learning models, image processing, GIS analysis</li>
   <li><b>Application Layer:</b> Web and mobile dashboards</li>
   <li><b>Cloud Layer:</b> Data storage, analytics, alerts, and visualization</li>
 </ul>
@@ -83,6 +83,56 @@
 
 <hr/>
 
+<h2>Expected Outcomes</h2>
+<ul>
+  <li>Improved cinnamon yield and overall product quality</li>
+  <li>Early identification and prediction of fungal disease spread</li>
+  <li>Reduced fertilizer waste through precision nutrient recommendations</li>
+  <li>Better utilization of plantation land by identifying vacant areas</li>
+  <li>Accurate yield forecasting to support planning and exports</li>
+  <li>Reduced post-harvest losses through continuous warehouse monitoring</li>
+  <li>Improved decision-making for farmers, plantation managers, and exporters</li>
+  <li>Compliance with local and international export quality standards</li>
+</ul>
+
+<hr/>
+
+<h2>System Dependencies</h2>
+
+<h3>Software Dependencies</h3>
+<ul>
+  <li>Node.js</li>
+  <li>Python</li>
+  <li>TensorFlow</li>
+  <li>Scikit-learn</li>
+  <li>React</li>
+  <li>Flutter</li>
+  <li>MongoDB</li>
+  <li>MQTT Broker</li>
+  <li>QGIS / GIS Libraries</li>
+  <li>Git &amp; GitHub</li>
+</ul>
+
+<h3>Hardware Dependencies</h3>
+<ul>
+  <li>ESP32 Microcontroller</li>
+  <li>NPK Soil Sensors</li>
+  <li>Moisture Sensors</li>
+  <li>Temperature &amp; Humidity Sensors</li>
+  <li>Environmental Gas Sensors</li>
+  <li>Smartphone for image capture</li>
+  <li>Drone or satellite imagery sources</li>
+</ul>
+
+<h3>External Services &amp; Tools</h3>
+<ul>
+  <li>Cloud hosting platform</li>
+  <li>Notification services (SMS / Email / App alerts)</li>
+  <li>MS Planner for task and project tracking</li>
+</ul>
+
+<hr/>
+
 <h2>Team Members &amp; Contributions</h2>
 <table>
   <thead>
@@ -94,24 +144,33 @@
   <tbody>
     <tr>
       <td>Member 1</td>
-      <td>Post-harvest monitoring</td>
+      <td>Post-harvest quality monitoring</td>
     </tr>
     <tr>
       <td>Member 2</td>
-      <td>Disease prediction</td>
+      <td>Fungal disease prediction</td>
     </tr>
     <tr>
       <td>Member 3</td>
-      <td>Soil &amp; fertilizer recommendation</td>
+      <td>Soil analysis and fertilizer recommendation</td>
     </tr>
     <tr>
       <td>Member 4</td>
-      <td>GIS &amp; yield forecasting</td>
+      <td>GIS-based vacant area detection and yield forecasting</td>
     </tr>
   </tbody>
 </table>
 
 <hr/>
 
+<h2>Version Control &amp; Collaboration</h2>
+<p>
+  This project uses GitHub for version control and collaborative development.
+  The repository maintains a complete history of commits, branches, and merges,
+  ensuring transparency of individual and team contributions.
+</p>
 
+<hr/>
 
+<h2>License</h2>
+<p>Academic use only – Final Year Project</p>
