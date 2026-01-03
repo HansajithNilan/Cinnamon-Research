@@ -138,29 +138,3 @@ smartcinnamon/
 
 <hr/>
 
-<h2>How to Run (High Level)</h2>
-<ol>
-  <li>Clone the repository</li>
-</ol>
-<pre><code>git clone &lt;repository-link&gt;</code></pre>
-
-<ol start="2">
-  <li>Configure environment variables (if applicable)</li>
-  <li>Start backend services</li>
-  <li>Run web/mobile applications</li>
-  <li>Connect IoT devices and data sources</li>
-</ol>
-
-<hr/>
-
-<h2>Notes for Evaluators</h2>
-<ul>
-  <li>This repository represents a <b>single integrated SMARTCINNAMON system</b></li>
-  <li>All system capabilities operate under one platform</li>
-  <li>Git history reflects collaborative development</li>
-</ul>
-
-<hr/>
-
-<h2>License</h2>
-<p>Academic use only – Final Year Project</p>
