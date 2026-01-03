@@ -1,12 +1,39 @@
 export const colors = {
-  primary: "#4CAF50",
-  primaryDark: "#45a049",
-  secondary: "#757575",
-  background: "#F5F5F5",
+  // Primary colors - Modern teal/emerald palette
+  primary: "#10B981",
+  primaryLight: "#D1FAE5",
+  primaryDark: "#047857",
+  primaryDarker: "#065F46",
+  
+  // Secondary colors - Accent palette
+  secondary: "#F59E0B",
+  secondaryLight: "#FEF3C7",
+  
+  // Status colors
+  danger: "#EF4444",
+  dangerLight: "#FEE2E2",
+  success: "#10B981",
+  warning: "#F59E0B",
+  info: "#3B82F6",
+  
+  // Background & Surfaces
+  background: "#F9FAFB",
+  surface: "#FFFFFF",
+  surfaceAlt: "#F3F4F6",
+  
+  // Text colors
+  text: "#111827",
+  textSecondary: "#6B7280",
+  textTertiary: "#9CA3AF",
   white: "#FFFFFF",
   black: "#000000",
-  text: "#212121",
-  textSecondary: "#757575",
-  border: "#E0E0E0",
-  borderDashed: "#BDBDBD",
+  
+  // Borders & Dividers
+  border: "#E5E7EB",
+  borderLight: "#F3F4F6",
+  divider: "#D1D5DB",
+  
+  // Shadows
+  shadowLight: "rgba(0, 0, 0, 0.05)",
+  shadowMedium: "rgba(0, 0, 0, 0.1)",
 };
