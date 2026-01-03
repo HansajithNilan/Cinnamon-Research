@@ -1,3 +1,6 @@
+<img src="Frontend/assets/Picture1.jpg" alt="System Architecture" width="900"/>
+
+
 <h1 align="center">SMARTCINNAMON</h1>
 <p align="center">
   <b>A Multi-Modal Machine Learning and IoT Framework for Precision Cinnamon Cultivation</b>
