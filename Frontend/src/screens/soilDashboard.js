@@ -370,8 +370,6 @@ export default function SoilDashboardNavigator() {
                         iconName = focused ? "map" : "map-outline";
                     } else if (route.name === "History") {
                         iconName = focused ? "time" : "time-outline";
-                    } else if (route.name === "Settings") {
-                        iconName = focused ? "settings" : "settings-outline";
                     }
 
                     return <Ionicons name={iconName} size={20} color={color} />;
@@ -410,7 +408,6 @@ export default function SoilDashboardNavigator() {
             <Tab.Screen name="Tips" component={TipsScreen} />
             <Tab.Screen name="Map" component={MapScreen} />
             <Tab.Screen name="History" component={HistoryScreen} />
-            <Tab.Screen name="Settings" component={SettingsScreen} />
         </Tab.Navigator>
     );
 }
