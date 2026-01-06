@@ -98,19 +98,58 @@ const ChatScreen = () => {
       setMessages([...messages, newMessage]);
       setInputText("");
 
-      // Simulate bot typing/response
-      setTimeout(() => {
-        const botMessage = {
-          id: (Date.now() + 1).toString(),
-          text: "Thanks for sharing. Based on your input, I recommend monitoring the moisture levels in that area.",
-          isUser: false,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        };
-        setMessages((prev) => [...prev, botMessage]);
-      }, 1500);
+      const lowerInput = inputText.toLowerCase();
+
+      // Check for specific data retrieval command
+      if (lowerInput.includes(".give me") || lowerInput.includes("2026 01 05")) {
+        setTimeout(() => {
+          // Response 1: The Image
+          const imageResponse = {
+            id: (Date.now() + 1).toString(),
+            // Using a placeholder or potentially a local asset if available. 
+            // Since we updated renderMessage to handle non-string sources, we could use require if we had the path.
+            // For now, we'll use a placeholder URL that looks like a satellite map or similar, 
+            // or just the generic placeholder from assets if we can import it.
+            // Assuming we want to simulate the "AnalyzeScreen" data:
+            image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_c52m-FjJKjNpwzO9VnGLnNv3K7t5iWd34A&s", // Placeholder for demo
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          };
+
+          // Response 2: The Details
+          const detailResponse = {
+            id: (Date.now() + 2).toString(),
+            text: "Here is the analysis for 2026-01-05:\n\n" +
+              "• Vacant Area Size: 131.30 sqm\n" +
+              "• Plants Count: 121\n" +
+              "• Estimated Cost: Rs 14,520.00",
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          };
+
+          setMessages((prev) => [...prev, imageResponse, detailResponse]);
+        }, 1000);
+      } else {
+        // Default Generic Response
+        setTimeout(() => {
+          const botMessage = {
+            id: (Date.now() + 1).toString(),
+            text: "Thanks for sharing. Based on your input, I recommend monitoring the moisture levels in that area.",
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          };
+          setMessages((prev) => [...prev, botMessage]);
+        }, 1500);
+      }
     }
   };
 
@@ -140,7 +179,10 @@ const ChatScreen = () => {
           ]}
         >
           {item.image ? (
-            <Image source={{ uri: item.image }} style={styles.messageImage} />
+            <Image
+              source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+              style={styles.messageImage}
+            />
           ) : (
             <Text
               style={[
