@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,12 +15,13 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../styles/colors";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
 const AnalyzeScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const [selectedImage, setSelectedImage] = useState(null);
   const [isDetecting, setIsDetecting] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -28,12 +29,13 @@ const AnalyzeScreen = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [detectionResults, setDetectionResults] = useState({
     vacantAreaCount: "04",
-    landVacantAreaSize: "04",
+    landVacantAreaSize: "131.30 sqm",
   });
   const [vacantFillingData, setVacantFillingData] = useState({
-    vacantAreaMeasurement: "150",
-    fillingPlantCount: "75",
-    yieldForecasting: "225",
+    vacantAreaMeasurement: "131.30 ",
+    vacantFillingPlantsCost: "14 520.00",
+    fillingPlantCount: "121",
+    yieldForecasting: "60.50 kg",
   });
 
   // History data
@@ -44,7 +46,7 @@ const AnalyzeScreen = () => {
       image: null,
       vacantArea: "1.2",
       plantCount: "300",
-      estimatedCost: "$1500",
+      estimatedCost: "Rs 1500",
     },
     {
       id: "2",
@@ -52,9 +54,15 @@ const AnalyzeScreen = () => {
       image: null,
       vacantArea: "0.8",
       plantCount: "200",
-      estimatedCost: "$1000",
+      estimatedCost: "Rs 1000",
     },
   ]);
+
+  useEffect(() => {
+    if (route.params?.imageUri) {
+      setSelectedImage(route.params.imageUri);
+    }
+  }, [route.params?.imageUri]);
 
   const pickImage = async () => {
     const permissionResult =
@@ -185,7 +193,7 @@ const AnalyzeScreen = () => {
         <View style={styles.historyStatsRow}>
           <View style={styles.historyStat}>
             <Text style={styles.historyStatLabel}>Area</Text>
-            <Text style={styles.historyStatValue}>{item.vacantArea} Ac</Text>
+            <Text style={styles.historyStatValue}>{item.vacantArea} Sqm</Text>
           </View>
           <View style={styles.historyDivider} />
           <View style={styles.historyStat}>
@@ -209,7 +217,7 @@ const AnalyzeScreen = () => {
         <Header
           title="Analysis History"
           showBack={true}
-          onBack={handleBackToUpload}
+          onBack={handleBack}
         />
         <FlatList
           data={historyData}
@@ -269,7 +277,13 @@ const AnalyzeScreen = () => {
             <View style={[styles.metricRow, styles.lastMetricRow]}>
               <Text style={styles.metricLabel}>Yield Forecast</Text>
               <Text style={styles.metricValue}>
-                {vacantFillingData.yieldForecasting} <Text style={styles.unit}>kg</Text>
+                {vacantFillingData.yieldForecasting} <Text style={styles.unit}></Text>
+              </Text>
+            </View>
+            <View style={[styles.metricRow, styles.lastMetricRow]}>
+              <Text style={styles.metricLabel}>Vacant Filling Plants Cost</Text>
+              <Text style={styles.metricValue}>
+                {vacantFillingData.vacantFillingPlantsCost} <Text style={styles.unit}>Rs.</Text>
               </Text>
             </View>
           </View>
@@ -311,7 +325,7 @@ const AnalyzeScreen = () => {
         <Header
           title="Detection Results"
           showBack={true}
-          onBack={handleBackToUpload}
+          onBack={handleBack}
         />
 
         <ScrollView
@@ -336,12 +350,12 @@ const AnalyzeScreen = () => {
 
             <View style={styles.statsGrid}>
               <View style={styles.statBox}>
-                <Text style={styles.statValue}>{detectionResults.vacantAreaCount}</Text>
+                <Text style={styles.statValue} size={10}>{detectionResults.vacantAreaCount}</Text>
                 <Text style={styles.statLabel}>Vacant Spots</Text>
               </View>
               <View style={styles.statBox}>
                 <Text style={styles.statValue}>{detectionResults.landVacantAreaSize}</Text>
-                <Text style={styles.statLabel}>Total Size</Text>
+                <Text style={styles.statLabel}>Area Size</Text>
               </View>
             </View>
 
