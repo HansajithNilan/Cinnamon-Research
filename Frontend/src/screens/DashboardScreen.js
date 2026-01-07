@@ -105,6 +105,17 @@ const DashboardContent = () => {
       iconBg: "rgba(253, 121, 168, 0.15)",
       status: "optimal",
     },
+    {
+      id: 8,
+      icon: "leaf-outline",
+      title: "Air Quality | වායු ගුණත්වය",
+      description: "Overall air quality index for storage environment | ගබඩා පරිසරය සඳහා සමස්ත වායු ගුණාත්මක දර්ශකය",
+      value: "AQI: 50 (Good)",
+      valueColor: "#00CEC9",
+      bgColor: "rgba(0, 206, 201, 0.12)",
+      iconBg: "rgba(0, 206, 201, 0.15)",
+      status: "optimal",
+    },
   ];
 
   const quickStats = [

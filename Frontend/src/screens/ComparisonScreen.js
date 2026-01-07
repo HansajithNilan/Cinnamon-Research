@@ -253,15 +253,15 @@ const ComparisonScreen = ({ navigation }) => {
         )}
 
         {/* Section Header */}
-        <View style={styles.sectionHeader}>
+        {/* <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Live Sensor Readings | සජීවී සංවේදක කියවීම්</Text>
           <TouchableOpacity style={styles.filterButton}>
             <Ionicons name="options-outline" size={20} color={colors.primary} />
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Sensor Cards */}
-        {sensorReadings.map((sensor) => (
+        {/* {sensorReadings.map((sensor) => (
           <TouchableOpacity key={sensor.id} activeOpacity={0.8}>
             <LinearGradient
               colors={getCardGradient(sensor.status)}
@@ -302,7 +302,7 @@ const ComparisonScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              {/* Progress Bar */}
+             
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
                   <LinearGradient
@@ -316,7 +316,7 @@ const ComparisonScreen = ({ navigation }) => {
               </View>
             </LinearGradient>
           </TouchableOpacity>
-        ))}
+        ))} */}
 
         {/* Recommendation Card */}
         <LinearGradient
