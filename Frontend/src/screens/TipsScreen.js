@@ -195,7 +195,7 @@ export default function FertilizerRecommendationScreen() {
         </Animated.View>
 
         {/* Cost Breakdown Section */}
-        <Animated.View 
+        {/* <Animated.View 
           style={[
             styles.section,
             {
@@ -251,7 +251,7 @@ export default function FertilizerRecommendationScreen() {
               <Text style={styles.totalValue}>{totalCost}</Text>
             </LinearGradient>
           </View>
-        </Animated.View>
+        </Animated.View> */}
 
         {/* Pro Tips Section */}
         <Animated.View 

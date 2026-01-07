@@ -318,7 +318,7 @@ export default function SoilAnalyzeScreen() {
                             style={styles.primaryButtonGradient}
                         >
                             <MaterialCommunityIcons name="file-document-outline" size={20} color="#FFFFFF" />
-                            <Text style={styles.primaryButtonText}>Generate Full Report</Text>
+                            <Text style={styles.primaryButtonText}>Annalyze Soli Fertilizer</Text>
                         </LinearGradient>
                     </TouchableOpacity>
 
