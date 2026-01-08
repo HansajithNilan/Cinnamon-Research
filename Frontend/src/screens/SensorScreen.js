@@ -170,6 +170,7 @@ const SensorScreen = ({ navigation }) => {
               </TouchableOpacity>
               <View>
                 <Text style={styles.greetingText}>Live Data Feed | සජීවී දත්ත</Text>
+             
                 <Text style={styles.brandText}>Sensor Monitoring | සංවේදක නිරීක්ෂණය</Text>
               </View>
             </View>
