@@ -22,7 +22,7 @@ const ProfileScreen = () => {
 
     // Dummy user state
     const [userInfo, setUserInfo] = useState({
-        name: "Cinnamon AI User",
+        name: "Cinnamon User",
         email: "user@cinnamon.lk",
         phone: "+94 77 123 4567",
         address: "Colombo, Sri Lanka",

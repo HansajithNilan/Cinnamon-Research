@@ -226,7 +226,7 @@ const HomeScreen = () => {
             <View style={styles.topBar}>
               <View style={styles.welcomeContainer}>
                 <Text style={styles.greetingText}>Welcome Back,</Text>
-                <Text style={styles.brandText}>Cinnamon AI</Text>
+                <Text style={styles.brandText}>Smart Cinnamon</Text>
                 <View style={styles.taglineContainer}>
                   <MaterialCommunityIcons name="leaf" size={14} color="rgba(255,255,255,0.7)" />
                   <Text style={styles.taglineText}>Smart Agriculture Solutions</Text>
@@ -262,7 +262,7 @@ const HomeScreen = () => {
                 </View>
               </View>
               <View style={styles.statDivider} />
-              <View style={styles.statItem}>
+              {/* <View style={styles.statItem}>
                 <View style={[styles.statIconBg, { backgroundColor: "rgba(255, 193, 7, 0.3)" }]}>
                   <Ionicons name="analytics" size={18} color="#FFE082" />
                 </View>
@@ -270,7 +270,7 @@ const HomeScreen = () => {
                   <Text style={styles.statValue}>AI</Text>
                   <Text style={styles.statLabel}>Powered</Text>
                 </View>
-              </View>
+              </View> */}
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <View style={[styles.statIconBg, { backgroundColor: "rgba(33, 150, 243, 0.3)" }]}>

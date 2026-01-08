@@ -97,7 +97,7 @@ const GeneralSettingsScreen = () => {
                                 <Ionicons name="person" size={40} color={colors.white} />
                             </View>
                             <View style={styles.profileInfo}>
-                                <Text style={styles.profileName}>Cinnamon AI User</Text>
+                                <Text style={styles.profileName}>Cinnamon  User</Text>
                                 <Text style={styles.profileEmail}>user@cinnamon.lk</Text>
                             </View>
                             <View style={styles.editButton}>

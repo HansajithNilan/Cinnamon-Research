@@ -28,6 +28,10 @@ const SuggestionsScreen = ({ navigation }) => {
       current: "75%",
       ideal: "60-70%",
       deviation: "+5%",
+      reasons: [
+        { text: "Mold growth risk", icon: "water" },
+        { text: "Cinnamon spoilage potential", icon: "warning" }
+      ],
       recommendations: [
         "Activate dehumidifiers in zone B immediately | වහාම B කලාපයේ dehumidifiers සක්‍රිය කරන්න",
         "Increase warehouse ventilation by opening vents | වාතාශ්‍රය විවෘත කරන්න",
@@ -44,6 +48,10 @@ const SuggestionsScreen = ({ navigation }) => {
       current: "12°C",
       ideal: "15-18°C",
       deviation: "-3°C",
+      reasons: [
+        { text: "Reduced aroma quality", icon: "rose" },
+        { text: "Moisture condensation", icon: "water-outline" }
+      ],
       recommendations: [
         "Adjust thermostat to target range | තාපාංකය ඉලක්ක පරාසයට සකසන්න",
         "Ensure all insulation is intact and seal any drafts | පරිවාරණය නිසියාකාරව ඇති බව සහතික කරන්න",
@@ -59,6 +67,10 @@ const SuggestionsScreen = ({ navigation }) => {
       current: "250 lux",
       ideal: "< 200 lux",
       deviation: "+50 lux",
+      reasons: [
+        { text: "Colour degradation", icon: "color-palette" },
+        { text: "Essential oil breakdown", icon: "flask" }
+      ],
       recommendations: [
         "Reduce artificial lighting intensity in affected areas | බලපෑමට ලක් වූ ප්‍රදේශවල ආලෝකය අඩු කරන්න",
         "Cover windows or use blinds to block direct sunlight | කවුළු ආවරණය කරන්න",
@@ -122,7 +134,7 @@ const SuggestionsScreen = ({ navigation }) => {
                   <Text style={styles.greetingText}>Smart Insights | බුද්ධිමත් අවබෝධය</Text>
                   <View style={styles.aiBadge}>
                     <Ionicons name="sparkles" size={10} color="#FFF" />
-                    <Text style={styles.aiBadgeText}>AI</Text>
+                    <Text style={styles.aiBadgeText}></Text>
                   </View>
                 </View>
                 <Text style={styles.brandText}>Suggestions | යෝජනා</Text>
@@ -292,6 +304,26 @@ const SuggestionsScreen = ({ navigation }) => {
                     <Text style={[styles.metricValue, { color: priorityStyles.color }]}>{issue.deviation}</Text>
                   </View>
                 </LinearGradient>
+
+                {/* Reasons for risk */}
+                {issue.reasons && issue.reasons.length > 0 && (
+                  <View style={styles.reasonsContainer}>
+                    <View style={styles.reasonsHeader}>
+                      <Ionicons name="alert-circle" size={16} color="#E17055" />
+                      <Text style={styles.reasonsTitle}>Risk Impact</Text>
+                    </View>
+                    <View style={styles.reasonsList}>
+                      {issue.reasons.map((reason, idx) => (
+                        <View key={idx} style={styles.reasonItem}>
+                          <View style={styles.reasonIconContainer}>
+                            <Ionicons name={reason.icon} size={16} color="#E17055" />
+                          </View>
+                          <Text style={styles.reasonText}>{reason.text}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
 
                 <View style={styles.recommendationsContainer}>
                   <View style={styles.recommendationsHeader}>
@@ -1022,6 +1054,58 @@ const styles = StyleSheet.create({
   optimalStatItem: {
     flex: 1,
     alignItems: "center",
+  },
+  reasonsContainer: {
+    marginTop: 16,
+    marginBottom: 4,
+    backgroundColor: "rgba(225, 112, 85, 0.05)",
+    borderRadius: 14,
+    padding: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: "#E17055",
+  },
+  reasonsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  reasonsTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#E17055",
+    marginLeft: 8,
+    letterSpacing: 0.3,
+  },
+  reasonsList: {
+    gap: 10,
+  },
+  reasonItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    padding: 10,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  reasonIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "rgba(225, 112, 85, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  reasonText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#555",
+    fontWeight: "500",
+    lineHeight: 18,
   },
   optimalStatIcon: {
     width: 32,
