@@ -24,8 +24,8 @@ const { width } = Dimensions.get("window");
 const AnalysisDetailsScreen = ({ navigation, route }) => {
   const { imageUri } = route.params || {};
 
-  const chartData = [12, 15, 19, 24, 28, 35, 45];
-  const days = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7"];
+  const chartData = [13.61,  18.00,  31.47];
+  const days = ["Day 1",  "Day 3",  "Day 7"];
 
   // Calculate chart points
   const chartWidth = width - 80;
@@ -108,23 +108,20 @@ const AnalysisDetailsScreen = ({ navigation, route }) => {
 
         {/* Disease Identification */}
         <View style={styles.diseaseSection}>
-          <Text style={styles.diseaseTitle}>Cinnamon Leaf Blight</Text>
+          <Text style={styles.diseaseTitle}>Colletotrichum gloeosporioides</Text>
           <Text style={styles.diseaseSubtitle}>
-            Detected in nursery seedling leaf
+            (Cinnamon Leaf Blight)
           </Text>
         </View>
 
         {/* Critical Alert Card */}
         <View style={styles.alertCard}>
           <View style={styles.alertIcon}>
-            <Ionicons name="warning" size={28} color="#EF4444" />
+            <Ionicons name="checkmark-circle" size={28} color="#10B981" />
           </View>
           <View style={styles.alertContent}>
-            <Text style={styles.alertTitle}>Immediate Action Required</Text>
-            <Text style={styles.alertText}>
-              High spread rate detected. Early intervention recommended within
-              24 hours to prevent nursery-wide infection.
-            </Text>
+            <Text style={styles.alertTitle}>Risk Level:  Low Risk</Text>
+            <Text style={styles.warningAlert}>WARNING: Risk will become Critical within 7 days!</Text>
           </View>
         </View>
 
@@ -132,14 +129,14 @@ const AnalysisDetailsScreen = ({ navigation, route }) => {
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Ionicons name="pulse" size={24} color="#EF4444" />
-            <Text style={styles.statValue}>12%</Text>
-            <Text style={styles.statLabel}>Current Infection</Text>
+            <Text style={styles.statValue}>11.83%</Text>
+            <Text style={styles.statLabel}>Current Severity</Text>
           </View>
 
           <View style={styles.statCard}>
             <Ionicons name="trending-up" size={24} color="#F59E0B" />
-            <Text style={styles.statValue}>+275%</Text>
-            <Text style={styles.statLabel}>7-Day Growth</Text>
+            <Text style={styles.statValue}>+31.47%</Text>
+            <Text style={styles.statLabel}>7 Day Growth</Text>
           </View>
 
           <View style={styles.statCard}>
@@ -149,10 +146,74 @@ const AnalysisDetailsScreen = ({ navigation, route }) => {
           </View>
         </View>
 
+                {/* Key Predictions */}
+        <View style={styles.predictionsCard}>
+          <Text style={styles.sectionTitle}>SPREAD FORECAST :</Text>
+          <Text style={styles.sectionTitle.title2}>(Expected Coverage)</Text>
+
+          <View style={styles.predictionItem}>
+            <View style={styles.predictionTimeTag}>
+              <Text style={styles.predictionTimeText}>1 Day</Text>
+            </View>
+            <View style={styles.predictionInfo} >
+              <Text style={styles.predictionValue}>13.61%</Text>
+              <Text style={styles.predictionChange}>+1.78% increase</Text>
+            </View>
+            <View style={[styles.riskTag, styles.riskTagLow]}>
+              <Text style={styles.riskTagText}>Low Risk</Text>
+            </View>
+          </View>
+
+          <View style={styles.predictionDivider} />
+
+          <View style={styles.predictionItem}>
+            <View
+              style={[
+                styles.predictionTimeTag,
+                styles.predictionTimeTagWarning,
+              ]}
+            >
+              <Text style={styles.predictionTimeText}>3 Days</Text>
+            </View>
+            <View style={styles.predictionInfo}>
+              <Text
+                style={[styles.predictionValue, styles.predictionValueWarning]}
+              >
+                18.00%
+              </Text>
+              <Text style={styles.predictionChange}>+6.17% increase</Text>
+            </View>
+            <View style={[styles.riskTag, styles.riskTagHigh]}>
+              <Text style={styles.riskTagText}>High Risk</Text>
+            </View>
+          </View>
+
+          <View style={styles.predictionDivider} />
+
+          <View style={styles.predictionItem}>
+            <View
+              style={[styles.predictionTimeTag, styles.predictionTimeTagDanger]}
+            >
+              <Text style={styles.predictionTimeText}>7 Days</Text>
+            </View>
+            <View style={styles.predictionInfo}>
+              <Text
+                style={[styles.predictionValue, styles.predictionValueDanger]}
+              >
+               31.47%
+              </Text>
+              <Text style={styles.predictionChange}>+19.64% increase</Text>
+            </View>
+            <View style={[styles.riskTag, styles.riskTagCritical]}>
+              <Text style={styles.riskTagText}>Critical</Text>
+            </View>
+          </View>
+        </View>
+
         {/* Spread Projection Chart */}
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>7-Day Spread Projection</Text>
+            <Text style={styles.chartTitle}>7 Day Spread Projection</Text>
             <View style={styles.chartLegend}>
               <View style={styles.legendDot} />
               <Text style={styles.legendText}>Infection Rate %</Text>
@@ -203,7 +264,7 @@ const AnalysisDetailsScreen = ({ navigation, route }) => {
                     cy={y}
                     r="6"
                     fill={
-                      index < 2 ? "#10B981" : index < 4 ? "#F59E0B" : "#EF4444"
+                      index < 1 ? "#10B981" : index < 2 ? "#F59E0B" : "#EF4444"
                     }
                     stroke="#FFF"
                     strokeWidth="2"
@@ -237,68 +298,7 @@ const AnalysisDetailsScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Key Predictions */}
-        <View style={styles.predictionsCard}>
-          <Text style={styles.sectionTitle}>Key Predictions</Text>
 
-          <View style={styles.predictionItem}>
-            <View style={styles.predictionTimeTag}>
-              <Text style={styles.predictionTimeText}>1 Day</Text>
-            </View>
-            <View style={styles.predictionInfo}>
-              <Text style={styles.predictionValue}>15%</Text>
-              <Text style={styles.predictionChange}>+3% increase</Text>
-            </View>
-            <View style={[styles.riskTag, styles.riskTagLow]}>
-              <Text style={styles.riskTagText}>Low Risk</Text>
-            </View>
-          </View>
-
-          <View style={styles.predictionDivider} />
-
-          <View style={styles.predictionItem}>
-            <View
-              style={[
-                styles.predictionTimeTag,
-                styles.predictionTimeTagWarning,
-              ]}
-            >
-              <Text style={styles.predictionTimeText}>3 Days</Text>
-            </View>
-            <View style={styles.predictionInfo}>
-              <Text
-                style={[styles.predictionValue, styles.predictionValueWarning]}
-              >
-                28%
-              </Text>
-              <Text style={styles.predictionChange}>+16% increase</Text>
-            </View>
-            <View style={[styles.riskTag, styles.riskTagHigh]}>
-              <Text style={styles.riskTagText}>High Risk</Text>
-            </View>
-          </View>
-
-          <View style={styles.predictionDivider} />
-
-          <View style={styles.predictionItem}>
-            <View
-              style={[styles.predictionTimeTag, styles.predictionTimeTagDanger]}
-            >
-              <Text style={styles.predictionTimeText}>7 Days</Text>
-            </View>
-            <View style={styles.predictionInfo}>
-              <Text
-                style={[styles.predictionValue, styles.predictionValueDanger]}
-              >
-                45%
-              </Text>
-              <Text style={styles.predictionChange}>+33% increase</Text>
-            </View>
-            <View style={[styles.riskTag, styles.riskTagCritical]}>
-              <Text style={styles.riskTagText}>Critical</Text>
-            </View>
-          </View>
-        </View>
 
         {/* Early Action Recommendations */}
         <View style={styles.actionsCard}>
@@ -306,7 +306,13 @@ const AnalysisDetailsScreen = ({ navigation, route }) => {
             <Ionicons name="clipboard-outline" size={24} color="#1B9568" />
             <Text style={styles.actionsTitle}>Early Action Suggested</Text>
           </View>
-
+          {/* Advisory Line (NEW) */}
+  <View style={styles.advisoryBox}>
+    <Ionicons name="shield-checkmark-outline"  size={18} color="#10B981" />
+    <Text style={styles.advisoryText}>
+      ADVISORY: Blight detected. Apply fungicide immediately.
+    </Text>
+  </View>
           <View style={styles.actionItem}>
             <View style={styles.actionNumber}>
               <Text style={styles.actionNumberText}>1</Text>
@@ -315,7 +321,7 @@ const AnalysisDetailsScreen = ({ navigation, route }) => {
               <Text style={styles.actionTitle}>Prune & Isolate</Text>
               <Text style={styles.actionDescription}>
                 Remove infected leaves immediately. Isolate affected seedlings
-                to prevent leaf-to-leaf spread.
+                to prevent leaf to leaf spread.
               </Text>
             </View>
           </View>
@@ -326,10 +332,10 @@ const AnalysisDetailsScreen = ({ navigation, route }) => {
             </View>
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>Apply Fungicide</Text>
-              <Text style={styles.actionDescription}>
-                Apply recommended fungicide within 24 hours. Use copper-based or
-                mancozeb solutions.
-              </Text>
+                <Text style={styles.actionDescription}>• Apply a 1% Bordeaux mixture or another copper-based fungicide.</Text>
+                <Text style={styles.actionDescription}>• Spray a solution containing 20 milliliters of Hexaconazole fungicide (50 grams per liter), diluted in 10 liters of water.</Text>
+                <Text style={styles.actionDescription}>• Spray a solution containing 5 milliliters of tebuconazole fungicide (250 grams per liter), diluted in 10 liters of water.</Text>
+              
             </View>
           </View>
 
@@ -476,15 +482,15 @@ const styles = StyleSheet.create({
   },
   alertCard: {
     flexDirection: "row",
-    backgroundColor: "#FEE2E2",
+    backgroundColor: "#c0eddeff",
     marginHorizontal: 20,
     padding: 16,
-    borderRadius: 14,
-    marginBottom: 22,
+    borderRadius: 16,
+    marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: "#EF4444",
+    borderLeftColor: "#10B981",
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: "#0fc085ff",
   },
   alertIcon: {
     marginRight: 14,
@@ -495,8 +501,13 @@ const styles = StyleSheet.create({
   alertTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#991B1B",
+    color: "#10B981",
     marginBottom: 6,
+  },
+  warningAlert: {
+    color: "#F59E0B",
+    marginTop: 3,
+    textAlign: "left",
   },
   alertText: {
     fontSize: 14,
@@ -524,7 +535,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "700",
     color: "#111827",
     marginTop: 8,
@@ -628,7 +639,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#111827",
-    marginBottom: 18,
+    marginBottom: 1,
+  },
+  sectionTitle2: {
+    fontSize: 14,
+    fontWeight: "500",
   },
   predictionItem: {
     flexDirection: "row",
@@ -679,7 +694,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
   },
-  riskTagLow: {
+    riskTagLow: {
     backgroundColor: "#D1FAE5",
   },
   riskTagHigh: {
@@ -688,6 +703,7 @@ const styles = StyleSheet.create({
   riskTagCritical: {
     backgroundColor: "#FEE2E2",
   },
+  
   riskTagText: {
     fontSize: 11,
     fontWeight: "700",
@@ -728,6 +744,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginBottom: 20,
   },
+
+  advisoryBox: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#D1FAE5",
+  padding: 10,
+  borderRadius: 8,
+  marginTop: 8,
+  marginBottom: 12,
+},
+
+advisoryText: {
+  color: "#10B981",
+  fontSize: 13,
+  fontWeight: "600",
+  marginLeft: 6,
+},
   actionNumber: {
     width: 36,
     height: 36,

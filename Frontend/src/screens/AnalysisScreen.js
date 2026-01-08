@@ -55,7 +55,7 @@ const AnalysisScreen = ({ navigation, route }) => {
       setTimeout(() => {
         setParameters((prev) => ({
           ...prev,
-          currentInfection: "12%",
+          currentInfection: "11.83%",
         }));
       }, 400);
     }
@@ -64,7 +64,7 @@ const AnalysisScreen = ({ navigation, route }) => {
       setTimeout(() => {
         setParameters((prev) => ({
           ...prev,
-          prediction1Day: "15%",
+          prediction1Day: "13.61%",
         }));
       }, 400);
     }
@@ -73,7 +73,7 @@ const AnalysisScreen = ({ navigation, route }) => {
       setTimeout(() => {
         setParameters((prev) => ({
           ...prev,
-          prediction3Days: "28%",
+          prediction3Days: "18%",
         }));
       }, 400);
     }
@@ -82,7 +82,7 @@ const AnalysisScreen = ({ navigation, route }) => {
       setTimeout(() => {
         setParameters((prev) => ({
           ...prev,
-          prediction7Days: "45%",
+          prediction7Days: "31.47%",
         }));
       }, 400);
     }
@@ -194,15 +194,22 @@ const AnalysisScreen = ({ navigation, route }) => {
               </View>
               <Text style={styles.predictionLabel}>1 Day Prediction</Text>
             </View>
-            <Text
-              style={[
-                styles.predictionValue,
-                parameters.prediction1Day !== "Calculating..." &&
-                styles.predictionValueCalculated,
-              ]}
-            >
-              {parameters.prediction1Day}
-            </Text>
+            <View style={styles.predictionValueContainer}>
+              <Text
+                style={[
+                  styles.predictionValue,
+                  parameters.prediction1Day !== "Calculating..." &&
+                  styles.predictionValueCalculated,
+                ]}
+              >
+                {parameters.prediction1Day}
+              </Text>
+              {parameters.prediction1Day !== "Calculating..." && (
+                <View style={[styles.riskBadge, styles.riskBadgeLow]}>
+                  <Text style={styles.riskBadgeTextLow}>Low Risk</Text>
+                </View>
+              )}
+            </View>
           </View>
 
           <View style={styles.divider} />
@@ -447,6 +454,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
   },
+  riskBadgeLow: {
+    backgroundColor: "#D1FAE5",
+  },
   riskBadgeDanger: {
     backgroundColor: "#FEE2E2",
   },
@@ -454,6 +464,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     color: "#92400E",
+    textTransform: "uppercase",
+  },
+  riskBadgeTextLow: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#065F46",
     textTransform: "uppercase",
   },
   divider: {

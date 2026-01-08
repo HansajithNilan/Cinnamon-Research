@@ -121,7 +121,7 @@ const ImageScreen = ({ navigation }) => {
 
         {/* Info Banner */}
         <View style={styles.infoBanner}>
-          <Ionicons name="information-circle" size={20} color="#7A9B5C" />
+          <Ionicons name="information-circle" size={20} color="#10B981" />
           <Text style={styles.infoBannerText}>
             For best results, capture the leaf in good lighting with visible
             spots or discoloration.
@@ -147,7 +147,7 @@ const ImageScreen = ({ navigation }) => {
           ) : (
             <>
               <View style={styles.cloudIcon}>
-                <Ionicons name="camera-outline" size={60} color="#8B9D6B" />
+                <Ionicons name="camera-outline" size={60} color="#10B981" />
               </View>
               <Text style={styles.uploadTitle}>
                 Capture or Upload Leaf Photo
@@ -182,15 +182,15 @@ const ImageScreen = ({ navigation }) => {
         <View style={styles.tipsSection}>
           <Text style={styles.tipsTitle}>Photography Tips</Text>
           <View style={styles.tipItem}>
-            <Ionicons name="checkmark-circle" size={18} color="#7A9B5C" />
+            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
             <Text style={styles.tipText}>Ensure leaf is clearly visible</Text>
           </View>
           <View style={styles.tipItem}>
-            <Ionicons name="checkmark-circle" size={18} color="#7A9B5C" />
+            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
             <Text style={styles.tipText}>Use natural daylight if possible</Text>
           </View>
           <View style={styles.tipItem}>
-            <Ionicons name="checkmark-circle" size={18} color="#7A9B5C" />
+            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
             <Text style={styles.tipText}>
               Focus on infected or discolored areas
             </Text>
