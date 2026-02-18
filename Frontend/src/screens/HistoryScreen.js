@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,17 +9,30 @@ import {
   Dimensions,
   StatusBar,
   Platform,
+  ActivityIndicator,
+  Alert,
+  Share,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
 import { colors } from "../styles/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
+import { getSensorReadings, formatTimestamp } from "../services/firebaseService";
 
 const { width } = Dimensions.get("window");
 
 export default function HistoryScreen() {
   const navigation = useNavigation();
-  
+  const [isLoading, setIsLoading] = useState(true);
+  const [historyData, setHistoryData] = useState([]);
+  const [sensorReadings, setSensorReadings] = useState([]);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [stats, setStats] = useState({
+    improved: 0,
+    declined: 0,
+    total: 0,
+  });
+
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -28,36 +41,295 @@ export default function HistoryScreen() {
     new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
   ]).current;
 
+  // Fetch sensor history from Firebase
   useEffect(() => {
-    // Header animation
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Staggered card animations
-    const cardStagger = cardAnimations.map((anim, index) =>
-      Animated.timing(anim, {
-        toValue: 1,
-        duration: 500,
-        delay: index * 120,
-        useNativeDriver: true,
-      })
-    );
-    Animated.stagger(80, cardStagger).start();
+    fetchHistory();
   }, []);
 
-  const nutrientData = [
+  const fetchHistory = async () => {
+    try {
+      const result = await getSensorReadings(100); // Get last 100 readings for report
+
+      if (result.success && result.data.length > 0) {
+        setSensorReadings(result.data); // Store raw readings for report generation
+        processHistoryData(result.data);
+      } else {
+        console.log('No history data available');
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching history:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const processHistoryData = (readings) => {
+    // Group by parameters and calculate trends
+    const processed = [];
+
+    // Nitrogen analysis
+    const nitrogenValues = readings.map(r => r.nitrogen || 0).slice(0, 7);
+    const nitrogenTrend = calculateTrendPercentage(nitrogenValues);
+    processed.push({
+      parameter: "nitrogen",
+      name: "Nitrogen (N)",
+      nameSinhala: "නයිට්‍රජන්",
+      change: nitrogenTrend >= 0 ? `+${nitrogenTrend}%` : `${nitrogenTrend}%`,
+      lastDays: "Last 7 Readings",
+      color: nitrogenTrend >= 0 ? "#2E7D32" : "#D32F2F",
+      bgColor: nitrogenTrend >= 0 ? "#E8F5E9" : "#FFEBEE",
+      isPositive: nitrogenTrend >= 0,
+      icon: "leaf",
+      iconType: "fontawesome",
+      description: "Healthy growth indicator",
+      trend: nitrogenValues,
+      currentValue: readings[0]?.nitrogen || 0,
+      unit: "mg/kg",
+    });
+
+    // Phosphorus analysis
+    const phosphorusValues = readings.map(r => r.phosphorus || 0).slice(0, 7);
+    const phosphorusTrend = calculateTrendPercentage(phosphorusValues);
+    processed.push({
+      parameter: "phosphorus",
+      name: "Phosphorus (P)",
+      nameSinhala: "පොස්පරස්",
+      change: phosphorusTrend >= 0 ? `+${phosphorusTrend}%` : `${phosphorusTrend}%`,
+      lastDays: "Last 7 Readings",
+      color: phosphorusTrend >= 0 ? "#2E7D32" : "#D32F2F",
+      bgColor: phosphorusTrend >= 0 ? "#E8F5E9" : "#FFEBEE",
+      isPositive: phosphorusTrend >= 0,
+      icon: "atom",
+      iconType: "material",
+      description: "Root development nutrient",
+      trend: phosphorusValues,
+      currentValue: readings[0]?.phosphorus || 0,
+      unit: "mg/kg",
+    });
+
+    // Potassium analysis
+    const potassiumValues = readings.map(r => r.potassium || 0).slice(0, 7);
+    const potassiumTrend = calculateTrendPercentage(potassiumValues);
+    processed.push({
+      parameter: "potassium",
+      name: "Potassium (K)",
+      nameSinhala: "පොටෑසියම්",
+      change: potassiumTrend >= 0 ? `+${potassiumTrend}%` : `${potassiumTrend}%`,
+      lastDays: "Last 7 Readings",
+      color: potassiumTrend >= 0 ? "#2E7D32" : "#D32F2F",
+      bgColor: potassiumTrend >= 0 ? "#E8F5E9" : "#FFEBEE",
+      isPositive: potassiumTrend >= 0,
+      icon: "flask",
+      iconType: "fontawesome",
+      description: "Disease resistance booster",
+      trend: potassiumValues,
+      currentValue: readings[0]?.potassium || 0,
+      unit: "mg/kg",
+    });
+
+    // Moisture analysis
+    const moistureValues = readings.map(r => r.moisture || 0).slice(0, 7);
+    const moistureTrend = calculateTrendPercentage(moistureValues);
+    processed.push({
+      parameter: "moisture",
+      name: "Moisture",
+      nameSinhala: "තෙතමනය",
+      change: moistureTrend >= 0 ? `+${moistureTrend}%` : `${moistureTrend}%`,
+      lastDays: "Last 7 Readings",
+      color: moistureTrend >= 0 ? "#2E7D32" : "#D32F2F",
+      bgColor: moistureTrend >= 0 ? "#E8F5E9" : "#FFEBEE",
+      isPositive: moistureTrend >= 0,
+      icon: "water",
+      iconType: "material",
+      description: "Soil hydration level",
+      trend: moistureValues,
+      currentValue: readings[0]?.moisture || 0,
+      unit: "%",
+    });
+
+    // pH analysis
+    const phValues = readings.map(r => r.ph || 0).slice(0, 7);
+    const phTrend = calculateTrendPercentage(phValues);
+    processed.push({
+      parameter: "ph",
+      name: "pH Level",
+      nameSinhala: "pH මට්ටම",
+      change: phTrend >= 0 ? `+${phTrend}%` : `${phTrend}%`,
+      lastDays: "Last 7 Readings",
+      color: Math.abs(phTrend) < 2 ? "#2E7D32" : "#F57C00",
+      bgColor: Math.abs(phTrend) < 2 ? "#E8F5E9" : "#FFF3E0",
+      isPositive: Math.abs(phTrend) < 2,
+      icon: "test-tube",
+      iconType: "material",
+      description: "Soil acidity level",
+      trend: phValues,
+      currentValue: readings[0]?.ph || 0,
+      unit: "",
+    });
+
+    // EC analysis
+    const ecValues = readings.map(r => r.ec || 0).slice(0, 7);
+    const ecTrend = calculateTrendPercentage(ecValues);
+    processed.push({
+      parameter: "ec",
+      name: "EC Level",
+      nameSinhala: "විද්‍යුත් සන්නායකතාව",
+      change: ecTrend >= 0 ? `+${ecTrend}%` : `${ecTrend}%`,
+      lastDays: "Last 7 Readings",
+      color: ecTrend >= 0 ? "#2E7D32" : "#D32F2F",
+      bgColor: ecTrend >= 0 ? "#E8F5E9" : "#FFEBEE",
+      isPositive: ecTrend >= 0,
+      icon: "flash",
+      iconType: "material",
+      description: "Electrical conductivity",
+      trend: ecValues,
+      currentValue: readings[0]?.ec || 0,
+      unit: "mS/cm",
+    });
+
+    setHistoryData(processed);
+
+    // Calculate stats
+    const improved = processed.filter(p => p.isPositive).length;
+    const declined = processed.filter(p => !p.isPositive).length;
+    setStats({
+      improved,
+      declined,
+      total: readings.length,
+    });
+
+    // Trigger animations after data is loaded
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      const cardStagger = cardAnimations.slice(0, processed.length).map((anim, index) =>
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 500,
+          delay: index * 120,
+          useNativeDriver: true,
+        })
+      );
+      Animated.stagger(80, cardStagger).start();
+    }, 100);
+  };
+
+  const calculateTrendPercentage = (values) => {
+    if (values.length < 2) return 0;
+
+    const first = values[values.length - 1];
+    const last = values[0];
+
+    if (first === 0) return 0;
+
+    const change = ((last - first) / first) * 100;
+    return Math.round(change);
+  };
+
+  const generateReport = async () => {
+    try {
+      setIsGeneratingReport(true);
+
+      // Check if we have data
+      if (!sensorReadings || sensorReadings.length === 0) {
+        setIsGeneratingReport(false);
+        Alert.alert(
+          'No Data',
+          'No readings available to generate report.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Prepare report data
+      const date = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      let reportContent = `SOIL ANALYSIS HISTORY REPORT
+========================================
+
+Date: ${date}
+Total Readings: ${sensorReadings.length}
+
+========================================
+SENSOR READINGS
+========================================
+
+`;
+
+      // All parameters report
+      sensorReadings.forEach((reading, index) => {
+        reportContent += `Reading #${sensorReadings.length - index}\n`;
+        reportContent += `Date: ${formatTimestamp(reading.timestamp)}\n\n`;
+
+        if (reading.nitrogen !== undefined && reading.nitrogen !== null) {
+          reportContent += `Nitrogen (N): ${reading.nitrogen.toFixed(0)}mg/kg\n`;
+        }
+        if (reading.phosphorus !== undefined && reading.phosphorus !== null) {
+          reportContent += `Phosphorus (P): ${reading.phosphorus.toFixed(0)}mg/kg\n`;
+        }
+        if (reading.potassium !== undefined && reading.potassium !== null) {
+          reportContent += `Potassium (K): ${reading.potassium.toFixed(0)}mg/kg\n`;
+        }
+        if (reading.moisture !== undefined && reading.moisture !== null) {
+          reportContent += `Moisture: ${reading.moisture.toFixed(0)}%\n`;
+        }
+        if (reading.ph !== undefined && reading.ph !== null) {
+          reportContent += `pH Level: ${reading.ph.toFixed(1)}\n`;
+        }
+        if (reading.ec !== undefined && reading.ec !== null) {
+          reportContent += `EC Level: ${reading.ec.toFixed(0)}mS/cm\n`;
+        }
+
+        reportContent += `----------------------------------------\n`;
+      });
+
+      reportContent += `\n========================================\n`;
+      reportContent += `Generated by Cinnamon Research App`;
+
+      // Use native Share API
+      const result = await Share.share({
+        message: reportContent,
+        title: 'Complete Soil Analysis History Report',
+      });
+
+      setIsGeneratingReport(false);
+
+      if (result.action === Share.dismissedAction) {
+        console.log('Share dismissed');
+      }
+    } catch (error) {
+      console.error('Error generating report:', error);
+      setIsGeneratingReport(false);
+      Alert.alert(
+        'Error',
+        'Failed to generate report. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  // Use real data or empty array
+  const nutrientData = historyData.length > 0 ? historyData : [
     {
       name: "Nitrogen (N)",
       nameSinhala: "නයිට්‍රජන්",
@@ -141,17 +413,82 @@ export default function HistoryScreen() {
   };
 
   const summaryStats = [
-    { label: "Improved", value: "3", icon: "trending-up", color: "#2E7D32" },
-    { label: "Declined", value: "1", icon: "trending-down", color: "#D32F2F" },
-    { label: "Analyses", value: "12", icon: "analytics-outline", color: "#43A047" },
+    { label: "Improved", value: stats.improved.toString(), icon: "trending-up", color: "#2E7D32" },
+    { label: "Declined", value: stats.declined.toString(), icon: "trending-down", color: "#D32F2F" },
+    { label: "Readings", value: stats.total.toString(), icon: "analytics-outline", color: "#43A047" },
   ];
+
+  // Show loading screen
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+        <Text style={{ marginTop: 16, color: "#666", fontSize: 14 }}>
+          Loading history...
+        </Text>
+      </View>
+    );
+  }
+
+  // Show empty state if no data
+  if (historyData.length === 0) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#2E7D32" />
+        <LinearGradient
+          colors={["#1B5E20", "#2E7D32", "#43A047"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.topBar}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <Ionicons name="arrow-back" size={22} color={colors.white} />
+              </TouchableOpacity>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.greetingText}>Detection History</Text>
+                <Text style={styles.brandText}>Past Analyses</Text>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+          <MaterialCommunityIcons name="history" size={80} color="#E0E0E0" />
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#666', marginTop: 20, textAlign: 'center' }}>
+            No History Available
+          </Text>
+          <Text style={{ fontSize: 14, color: '#999', marginTop: 10, textAlign: 'center' }}>
+            Sensor readings will appear here once ESP32 starts sending data to Firebase.
+          </Text>
+          <TouchableOpacity
+            onPress={fetchHistory}
+            style={{
+              marginTop: 30,
+              backgroundColor: '#2E7D32',
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 12,
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
+              Refresh
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#2E7D32" />
-      
+
       {/* Enhanced Header Section */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.headerWrapper,
           {
@@ -170,12 +507,12 @@ export default function HistoryScreen() {
           <View style={styles.decorativeCircle1} />
           <View style={styles.decorativeCircle2} />
           <View style={styles.decorativeCircle3} />
-          
+
           {/* Top Bar */}
           <View style={styles.topBar}>
             <View style={styles.headerLeft}>
-              <TouchableOpacity 
-                onPress={() => navigation.goBack()} 
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
                 style={styles.backButton}
                 activeOpacity={0.7}
               >
@@ -200,8 +537,8 @@ export default function HistoryScreen() {
           <View style={styles.summaryContainer}>
             {summaryStats.map((stat, index) => (
               <View key={index} style={styles.summaryItem}>
-                <View style={[styles.summaryIconContainer, { backgroundColor: `${stat.color}30` }]}>
-                  <Ionicons name={stat.icon} size={20} color={stat.color} />
+                <View style={[styles.summaryIconContainer, { backgroundColor: stat.color }]}>
+                  <Ionicons name={stat.icon} size={20} color={colors.white} />
                 </View>
                 <Text style={styles.summaryValue}>{stat.value}</Text>
                 <Text style={styles.summaryLabel}>{stat.label}</Text>
@@ -223,7 +560,10 @@ export default function HistoryScreen() {
             <MaterialCommunityIcons name="chart-timeline-variant" size={24} color="#2E7D32" />
             <Text style={styles.sectionTitle}>30-Day Changes</Text>
           </View>
-          <TouchableOpacity style={styles.viewAllButton}>
+          <TouchableOpacity
+            style={styles.viewAllButton}
+            onPress={() => navigation.navigate('DetailedHistory')}
+          >
             <Text style={styles.viewAllText}>View All</Text>
             <Ionicons name="chevron-forward" size={16} color="#2E7D32" />
           </TouchableOpacity>
@@ -231,8 +571,8 @@ export default function HistoryScreen() {
 
         {/* Nutrient Cards */}
         {nutrientData.map((item, index) => (
-          <Animated.View 
-            key={index} 
+          <Animated.View
+            key={index}
             style={[
               styles.card,
               {
@@ -246,7 +586,10 @@ export default function HistoryScreen() {
               },
             ]}
           >
-            <TouchableOpacity activeOpacity={0.95}>
+            <TouchableOpacity
+              activeOpacity={0.95}
+              onPress={() => navigation.navigate('DetailedHistory', { parameter: item.parameter })}
+            >
               <View style={styles.cardHeader}>
                 <View style={styles.cardTitleRow}>
                   <View style={[styles.cardIconContainer, { backgroundColor: item.bgColor }]}>
@@ -278,7 +621,17 @@ export default function HistoryScreen() {
 
               <View style={styles.cardBody}>
                 <View style={styles.cardStats}>
-                  <Text style={[styles.cardChange, { color: item.color }]}>
+                  {item.currentValue !== undefined && (
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 6 }}>
+                      <Text style={[styles.cardChange, { color: item.color, fontSize: 28 }]}>
+                        {item.currentValue?.toFixed(item.unit === 'mg/kg' ? 0 : 1)}
+                      </Text>
+                      <Text style={{ fontSize: 14, color: '#666', marginLeft: 6 }}>
+                        {item.unit}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={[styles.cardChange, { color: item.color, fontSize: 18, marginBottom: 6 }]}>
                     {item.change}
                   </Text>
                   <View style={styles.cardMeta}>
@@ -313,7 +666,12 @@ export default function HistoryScreen() {
         ))}
 
         {/* Export Report Card */}
-        <TouchableOpacity style={styles.exportCard} activeOpacity={0.9}>
+        <TouchableOpacity
+          style={styles.exportCard}
+          activeOpacity={0.9}
+          onPress={generateReport}
+          disabled={isGeneratingReport}
+        >
           <LinearGradient
             colors={["#2E7D32", "#43A047"]}
             start={{ x: 0, y: 0 }}
