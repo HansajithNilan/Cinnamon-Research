@@ -10,7 +10,6 @@ import { colors } from "./src/styles/colors";
 import DashboardScreen from "./src/screens/DashboardScreen";
 import AnalysisScreen from "./src/screens/AnalysisScreen";
 import TipsScreen from "./src/screens/TipsScreen";
-import MapScreen from "./src/screens/MapScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 
