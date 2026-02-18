@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,17 +9,62 @@ import {
   Dimensions,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { colors } from "../styles/colors";
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
+import { getLatestReading } from "../services/firebaseService";
+import {
+  getFertilizerRecommendation,
+  calculateSoilQuality,
+  estimateOrganicMatter
+} from "../services/fertilizerApi";
 
 const { width } = Dimensions.get("window");
 
+// Fertilizer prices in LKR per kg (update these with current market prices)
+const FERTILIZER_PRICES = {
+  Urea: 150,      // Rs. 150 per kg
+  TSP: 200,       // Rs. 200 per kg
+  MOP: 180,       // Rs. 180 per kg
+  Compost: 50,    // Rs. 50 per kg
+};
+
+// Function to calculate total cost per perch
+const calculatePerPerchCost = (perPerchData) => {
+  if (!perPerchData) return 0;
+
+  const ureaCost = (perPerchData.Urea_kg || 0) * FERTILIZER_PRICES.Urea;
+  const tspCost = (perPerchData.TSP_kg || 0) * FERTILIZER_PRICES.TSP;
+  const mopCost = (perPerchData.MOP_kg || 0) * FERTILIZER_PRICES.MOP;
+  const compostCost = (perPerchData.Compost_kg || 0) * FERTILIZER_PRICES.Compost;
+
+  return ureaCost + tspCost + mopCost + compostCost;
+};
+
+// Function to calculate cost per plant
+const calculatePerPlantCost = (perPlantData) => {
+  if (!perPlantData) return 0;
+
+  const ureaCost = ((perPlantData.Urea_g || 0) / 1000) * FERTILIZER_PRICES.Urea;
+  const tspCost = ((perPlantData.TSP_g || 0) / 1000) * FERTILIZER_PRICES.TSP;
+  const mopCost = ((perPlantData.MOP_g || 0) / 1000) * FERTILIZER_PRICES.MOP;
+  const compostCost = (perPlantData.Compost_kg || 0) * FERTILIZER_PRICES.Compost;
+
+  return ureaCost + tspCost + mopCost + compostCost;
+};
+
 export default function FertilizerRecommendationScreen() {
   const navigation = useNavigation();
-  
+
+  // State management
+  const [loading, setLoading] = useState(true);
+  const [sensorData, setSensorData] = useState(null);
+  const [recommendation, setRecommendation] = useState(null);
+  const [error, setError] = useState(null);
+
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -31,6 +76,9 @@ export default function FertilizerRecommendationScreen() {
   ]).current;
 
   useEffect(() => {
+    // Fetch data and call API on mount
+    fetchDataAndRecommendation();
+
     // Header animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -63,29 +111,75 @@ export default function FertilizerRecommendationScreen() {
     Animated.stagger(100, cardStagger).start();
   }, []);
 
-  const fertilizerItems = [
-    { name: "Urea", quantity: "25 kg", price: "Rs. 1,250", icon: "leaf" },
-    { name: "ERP", quantity: "10 kg", price: "Rs. 800", icon: "seedling" },
-  ];
+  const fetchDataAndRecommendation = async () => {
+    setLoading(true);
+    setError(null);
 
-  const totalCost = "Rs. 2,050";
+    try {
+      // Fetch latest sensor data
+      const result = await getLatestReading();
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-      
-      {/* Enhanced Header Section */}
-      <Animated.View 
-        style={[
-          styles.headerWrapper,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
+      if (!result.success) {
+        setError('Failed to fetch sensor data');
+        setLoading(false);
+        return;
+      }
+
+      const data = result.data;
+      setSensorData(data);
+
+      // Prepare data for API
+      const N = Number(data.nitrogen) || 50;
+      const P = Number(data.phosphorus) || 20;
+      const K = Number(data.potassium) || 70;
+      const pH = Number(data.ph) || 6.5;
+      const EC = Number(data.ec) || 0.5;
+      const Moisture = Number(data.moisture) || 40;
+      const Temperature = Number(data.temperature) || 25;
+
+      // Estimate organic matter
+      const organicMatter = estimateOrganicMatter(EC, Moisture);
+
+      // Calculate soil quality
+      const soilQuality = calculateSoilQuality(N, P, K, pH, organicMatter);
+
+      // Prepare request data
+      const requestData = {
+        N: parseFloat(N.toFixed(1)),
+        P: parseFloat(P.toFixed(1)),
+        K: parseFloat(K.toFixed(1)),
+        pH: parseFloat(pH.toFixed(2)),
+        EC: parseFloat(EC.toFixed(2)),
+        Moisture: parseFloat(Moisture.toFixed(1)),
+        Temperature: parseFloat(Temperature.toFixed(1)),
+        Organic_Matter: parseFloat(organicMatter.toFixed(2)),
+        Soil_Quality: soilQuality,
+        Stage: "Mature"
+      };
+
+      // Call fertilizer API
+      const apiResult = await getFertilizerRecommendation(requestData);
+
+      if (apiResult.success) {
+        setRecommendation(apiResult.data);
+      } else {
+        setError(apiResult.error || 'Failed to get recommendations');
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      setError('An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
         <LinearGradient
-          colors={["#2E7D32", "#4CAF50", "#66BB6A"]}
+          colors={["#1B5E20", "#2E7D32", "#43A047"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
@@ -93,12 +187,11 @@ export default function FertilizerRecommendationScreen() {
           {/* Decorative circles */}
           <View style={styles.decorativeCircle1} />
           <View style={styles.decorativeCircle2} />
-          
-          {/* Top Bar */}
+
           <View style={styles.topBar}>
             <View style={styles.headerLeft}>
-              <TouchableOpacity 
-                onPress={() => navigation.goBack()} 
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
                 style={styles.backButton}
                 activeOpacity={0.7}
               >
@@ -109,12 +202,107 @@ export default function FertilizerRecommendationScreen() {
                 <Text style={styles.brandText}>Fertilizer Plans</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.profileButton} activeOpacity={0.8}>
+          </View>
+        </LinearGradient>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1B5E20" />
+          <Text style={styles.loadingText}>Analyzing recommendations...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+        <LinearGradient
+          colors={["#1B5E20", "#2E7D32", "#43A047"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          {/* Decorative circles */}
+          <View style={styles.decorativeCircle1} />
+          <View style={styles.decorativeCircle2} />
+
+          <View style={styles.topBar}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-back" size={22} color={colors.white} />
+              </TouchableOpacity>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.greetingText}>Tips & Guide</Text>
+                <Text style={styles.brandText}>Fertilizer Plans</Text>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+        <View style={styles.errorContainer}>
+          <MaterialCommunityIcons name="alert-circle" size={64} color="#F44336" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={fetchDataAndRecommendation} style={styles.retryButton}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+
+      {/* Enhanced Header Section */}
+      <Animated.View
+        style={[
+          styles.headerWrapper,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={["#1B5E20", "#2E7D32", "#43A047"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          {/* Decorative circles */}
+          <View style={styles.decorativeCircle1} />
+          <View style={styles.decorativeCircle2} />
+
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-back" size={22} color={colors.white} />
+              </TouchableOpacity>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.greetingText}>Tips & Guide</Text>
+                <Text style={styles.brandText}>Fertilizer Plans</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.profileButton}
+              activeOpacity={0.8}
+              onPress={fetchDataAndRecommendation}
+            >
               <LinearGradient
                 colors={["rgba(255,255,255,0.3)", "rgba(255,255,255,0.1)"]}
                 style={styles.profileGradient}
               >
-                <Ionicons name="notifications-outline" size={22} color={colors.white} />
+                <Ionicons name="refresh-outline" size={22} color={colors.white} />
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -128,28 +316,28 @@ export default function FertilizerRecommendationScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <MaterialCommunityIcons name="map-marker-radius" size={24} color="rgba(255,255,255,0.9)" />
-              <Text style={styles.statValue}>1 Acre</Text>
-              <Text style={styles.statLabel}>Field Size</Text>
+              <MaterialCommunityIcons name="flask-outline" size={24} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.statValue}>{recommendation?.meta?.soil_quality || 'N/A'}</Text>
+              <Text style={styles.statLabel}>Soil Quality</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <MaterialCommunityIcons name="calendar-check" size={24} color="rgba(255,255,255,0.9)" />
-              <Text style={styles.statValue}>Season 1</Text>
-              <Text style={styles.statLabel}>Application</Text>
+              <Text style={styles.statValue}>{recommendation?.meta?.stage || 'Mature'}</Text>
+              <Text style={styles.statLabel}>Growth Stage</Text>
             </View>
           </View>
         </LinearGradient>
       </Animated.View>
 
       {/* Scrollable Content */}
-      <ScrollView 
-        style={styles.content} 
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Main Recommendation Card */}
-        <Animated.View 
+        {/* Main Recommendation Card - Per Plant */}
+        <Animated.View
           style={[
             styles.recommendationCard,
             {
@@ -171,31 +359,71 @@ export default function FertilizerRecommendationScreen() {
           >
             <View style={styles.recommendationHeader}>
               <View style={styles.recommendationIconContainer}>
-                <MaterialCommunityIcons name="check-decagram" size={28} color="#2E7D32" />
+                <MaterialCommunityIcons name="check-decagram" size={26} color="#2E7D32" />
               </View>
               <View style={styles.recommendationBadge}>
-                <Text style={styles.badgeText}>AI Recommended</Text>
+                <Text style={styles.badgeText}>Per Plant</Text>
               </View>
             </View>
-            
-            <Text style={styles.recommendationLabel}>Optimal Fertilizer Mix</Text>
-            <Text style={styles.recommendationText}>
-              Apply 25 kg Urea + 10 kg ERP per acre
-            </Text>
-            
+
+            <Text style={styles.recommendationLabel}>Recommended Fertilizer Amount</Text>
+
+            {/* Vertical List with Icon Badges */}
+            <View style={styles.perPlantVerticalList}>
+              <View style={styles.perPlantVerticalItem}>
+                <View style={styles.perPlantLeftSection}>
+                  <View style={[styles.perPlantBadge, { backgroundColor: "#4CAF50" }]}>
+                    <FontAwesome5 name="leaf" size={12} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.perPlantVerticalName}>Urea</Text>
+                </View>
+                <Text style={styles.perPlantVerticalValue}>{recommendation?.per_plant?.Urea_g?.toFixed(1) || 0}g</Text>
+              </View>
+
+              <View style={styles.perPlantVerticalItem}>
+                <View style={styles.perPlantLeftSection}>
+                  <View style={[styles.perPlantBadge, { backgroundColor: "#2196F3" }]}>
+                    <FontAwesome5 name="seedling" size={12} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.perPlantVerticalName}>TSP</Text>
+                </View>
+                <Text style={styles.perPlantVerticalValue}>{recommendation?.per_plant?.TSP_g?.toFixed(1) || 0}g</Text>
+              </View>
+
+              <View style={styles.perPlantVerticalItem}>
+                <View style={styles.perPlantLeftSection}>
+                  <View style={[styles.perPlantBadge, { backgroundColor: "#9C27B0" }]}>
+                    <MaterialCommunityIcons name="flask" size={14} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.perPlantVerticalName}>MOP</Text>
+                </View>
+                <Text style={styles.perPlantVerticalValue}>{recommendation?.per_plant?.MOP_g?.toFixed(1) || 0}g</Text>
+              </View>
+
+              <View style={styles.perPlantVerticalItem}>
+                <View style={styles.perPlantLeftSection}>
+                  <View style={[styles.perPlantBadge, { backgroundColor: "#FF9800" }]}>
+                    <MaterialCommunityIcons name="sprout" size={14} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.perPlantVerticalName}>Compost</Text>
+                </View>
+                <Text style={styles.perPlantVerticalValue}>{recommendation?.per_plant?.Compost_g?.toFixed(1) || 0}g</Text>
+              </View>
+            </View>
+
             <View style={styles.recommendationDivider} />
-            
+
             <View style={styles.recommendationFooter}>
               <MaterialCommunityIcons name="information-outline" size={18} color="#558B2F" />
               <Text style={styles.recommendationSubtext}>
-                Based on your soil analysis and crop requirements
+                Based on your soil analysis (N:{sensorData?.nitrogen || 0}, P:{sensorData?.phosphorus || 0}, K:{sensorData?.potassium || 0})
               </Text>
             </View>
           </LinearGradient>
         </Animated.View>
 
-        {/* Cost Breakdown Section */}
-        {/* <Animated.View 
+        {/* Per Perch Recommendations Section */}
+        <Animated.View
           style={[
             styles.section,
             {
@@ -212,46 +440,54 @@ export default function FertilizerRecommendationScreen() {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleContainer}>
               <MaterialCommunityIcons name="chart-pie" size={22} color="#2E7D32" />
-              <Text style={styles.sectionTitle}>Cost Breakdown</Text>
+              <Text style={styles.sectionTitle}>Per Perch Recommendations</Text>
             </View>
             <View style={styles.sectionBadge}>
-              <Text style={styles.sectionBadgeText}>2 Items</Text>
+              <Text style={styles.sectionBadgeText}>{recommendation?.per_perch?.plants_per_perch || 0} Plants</Text>
             </View>
           </View>
 
           <View style={styles.costCard}>
-            {fertilizerItems.map((item, index) => (
-              <View key={index}>
-                <View style={styles.costRow}>
-                  <View style={styles.costItemLeft}>
-                    <View style={styles.costIconContainer}>
-                      <FontAwesome5 name={item.icon} size={16} color="#4CAF50" />
-                    </View>
-                    <View style={styles.costItemDetails}>
-                      <Text style={styles.costItemName}>{item.name}</Text>
-                      <Text style={styles.costItemQuantity}>{item.quantity}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.costValue}>{item.price}</Text>
-                </View>
-                {index < fertilizerItems.length - 1 && <View style={styles.divider} />}
+            {/* Fertilizer Quantities */}
+            <View style={styles.fertilizerRow}>
+              <View style={styles.fertilizerItem}>
+                <FontAwesome5 name="leaf" size={18} color="#4CAF50" />
+                <Text style={styles.fertilizerLabel}>Urea</Text>
+                <Text style={styles.fertilizerAmount}>{recommendation?.per_perch?.Urea_kg?.toFixed(1) || 0} kg</Text>
+                <Text style={styles.fertilizerPrice}>Rs. {FERTILIZER_PRICES.Urea}/kg</Text>
               </View>
-            ))}
 
-            <LinearGradient
-              colors={["#E8F5E9", "#C8E6C9"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.totalRow}
-            >
-              <View style={styles.totalLeft}>
-                <MaterialCommunityIcons name="calculator-variant" size={20} color="#2E7D32" />
-                <Text style={styles.totalLabel}>Total Investment</Text>
+              <View style={styles.fertilizerItem}>
+                <FontAwesome5 name="seedling" size={18} color="#2196F3" />
+                <Text style={styles.fertilizerLabel}>TSP</Text>
+                <Text style={styles.fertilizerAmount}>{recommendation?.per_perch?.TSP_kg?.toFixed(1) || 0} kg</Text>
+                <Text style={styles.fertilizerPrice}>Rs. {FERTILIZER_PRICES.TSP}/kg</Text>
               </View>
-              <Text style={styles.totalValue}>{totalCost}</Text>
-            </LinearGradient>
+
+              <View style={styles.fertilizerItem}>
+                <MaterialCommunityIcons name="flask" size={20} color="#9C27B0" />
+                <Text style={styles.fertilizerLabel}>MOP</Text>
+                <Text style={styles.fertilizerAmount}>{recommendation?.per_perch?.MOP_kg?.toFixed(1) || 0} kg</Text>
+                <Text style={styles.fertilizerPrice}>Rs. {FERTILIZER_PRICES.MOP}/kg</Text>
+              </View>
+
+              <View style={styles.fertilizerItem}>
+                <MaterialCommunityIcons name="sprout" size={20} color="#FF9800" />
+                <Text style={styles.fertilizerLabel}>Compost</Text>
+                <Text style={styles.fertilizerAmount}>{recommendation?.per_perch?.Compost_kg?.toFixed(1) || 0} kg</Text>
+                <Text style={styles.fertilizerPrice}>Rs. {FERTILIZER_PRICES.Compost}/kg</Text>
+              </View>
+            </View>
+
+            {/* Total Cost */}
+            <View style={styles.totalCostSection}>
+              <View style={styles.totalCostRow}>
+                <Text style={styles.totalCostText}>Estimated Total Cost</Text>
+                <Text style={styles.totalCostAmount}>Rs. {calculatePerPerchCost(recommendation?.per_perch).toFixed(2)}</Text>
+              </View>
+            </View>
           </View>
-        </Animated.View> */}
+        </Animated.View>
 
         {/* Pro Tips Section */}
         <Animated.View 
@@ -344,25 +580,9 @@ export default function FertilizerRecommendationScreen() {
           </View>
         </Animated.View>
 
-        {/* Spacer for bottom button */}
-        <View style={{ height: 100 }} />
+        {/* Spacer */}
+        <View style={{ height: 30 }} />
       </ScrollView>
-
-      {/* Bottom Button */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.confirmButton} activeOpacity={0.9}>
-          <LinearGradient
-            colors={["#2E7D32", "#388E3C"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.buttonGradient}
-          >
-            <MaterialCommunityIcons name="check-circle" size={22} color={colors.white} />
-            <Text style={styles.confirmButtonText}>Confirm Recommendation</Text>
-            <Ionicons name="arrow-forward" size={20} color={colors.white} />
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -510,8 +730,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   recommendationIconContainer: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     backgroundColor: "rgba(46, 125, 50, 0.12)",
     justifyContent: "center",
@@ -543,6 +763,41 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1B5E20",
     lineHeight: 28,
+  },
+  perPlantVerticalList: {
+    marginTop: 16,
+    gap: 8,
+  },
+  perPlantVerticalItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.3)",
+  },
+  perPlantLeftSection: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  perPlantBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  perPlantVerticalName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#2E7D32",
+  },
+  perPlantVerticalValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1B5E20",
   },
   recommendationDivider: {
     height: 1,
@@ -667,6 +922,56 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1B5E20",
   },
+  fertilizerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 16,
+    gap: 8,
+  },
+  fertilizerItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  fertilizerLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#757575",
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  fertilizerAmount: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#1A1A1A",
+  },
+  fertilizerPrice: {
+    fontSize: 10,
+    color: "#9E9E9E",
+    marginTop: 4,
+  },
+  totalCostSection: {
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  totalCostRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  totalCostText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#757575",
+  },
+  totalCostAmount: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#2E7D32",
+  },
   tipsContainer: {
     gap: 12,
   },
@@ -751,5 +1056,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     letterSpacing: 0.5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8FAF8",
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8FAF8",
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: "#1B5E20",
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: "bold",
   },
 });

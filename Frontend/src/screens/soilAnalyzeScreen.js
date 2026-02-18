@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -6,12 +6,15 @@ import {
     ScrollView,
     TouchableOpacity,
     Dimensions,
+    ActivityIndicator,
+    Alert,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors } from "../styles/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import Svg, { Circle } from "react-native-svg";
+import { getLatestReading } from "../services/firebaseService";
 
 const { width } = Dimensions.get("window");
 
@@ -135,58 +138,208 @@ const SummaryCard = ({ title, value, icon, color, subtitle }) => (
 
 export default function SoilAnalyzeScreen() {
     const navigation = useNavigation();
+    const [sensorData, setSensorData] = useState(null);
+    const [isLoadingData, setIsLoadingData] = useState(true);
 
-    // Sample data - replace with real data
+    // Fetch latest sensor data on mount and set up periodic polling
+    useEffect(() => {
+        fetchLatestSensorData();
+
+        // Set up interval to fetch data every 10 seconds
+        const interval = setInterval(() => {
+            fetchLatestSensorData();
+        }, 10000); // 10 seconds
+
+        // Clean up interval on unmount
+        return () => clearInterval(interval);
+    }, []);
+
+    const fetchLatestSensorData = async () => {
+        setIsLoadingData(true);
+        try {
+            const result = await getLatestReading();
+            if (result.success) {
+                setSensorData(result.data);
+            } else {
+                console.error('Failed to fetch sensor data:', result.error);
+            }
+        } catch (error) {
+            console.error('Error fetching sensor data:', error);
+        } finally {
+            setIsLoadingData(false);
+        }
+    };
+
+    // Show loading screen
+    if (isLoadingData) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#1B5E20" />
+                <Text style={{ marginTop: 10, color: "#666" }}>Loading sensor data...</Text>
+            </View>
+        );
+    }
+
+    // Helper function to analyze nutrient level
+    const analyzeNutrient = (value, optimal, type) => {
+        const percentage = Math.min((value / optimal) * 100, 100);
+        let status, statusSinhala, statusType, recommendation;
+
+        if (percentage >= 80) {
+            status = "Optimal Level";
+            statusSinhala = "ප්‍රශස්ත මට්ටම";
+            statusType = "optimal";
+            recommendation = "Maintain current fertilization schedule";
+        } else if (percentage >= 60) {
+            status = "Good Level";
+            statusSinhala = "හොඳ මට්ටම";
+            statusType = "good";
+            recommendation = `Monitor ${type} levels regularly`;
+        } else if (percentage >= 40) {
+            status = "Moderate Deficit";
+            statusSinhala = "මධ්‍යස්ථ හිඟය";
+            statusType = "warning";
+            recommendation = `Consider adding ${type}-rich fertilizer`;
+        } else {
+            status = "High Deficit";
+            statusSinhala = "අධික හිඟය";
+            statusType = "critical";
+            recommendation = `Apply ${type}-rich fertilizer within 7 days`;
+        }
+
+        return { percentage: Math.round(percentage), status, statusSinhala, statusType, recommendation };
+    };
+
+    // Helper function to analyze pH
+    const analyzePH = (ph) => {
+        const optimal = 6.5; // Optimal pH for cinnamon
+        let percentage, status, statusSinhala, statusType, recommendation;
+
+        // Calculate percentage based on how close to optimal range (5.5-7.0)
+        if (ph >= 5.5 && ph <= 7.0) {
+            // Within optimal range - calculate how centered it is
+            const distanceFromOptimal = Math.abs(ph - optimal);
+            percentage = Math.round(100 - (distanceFromOptimal / 0.75) * 10); // 0.75 is half of 1.5 range
+            status = "Optimal Range";
+            statusSinhala = "ප්‍රශස්ත පරාසය";
+            statusType = "optimal";
+            recommendation = "pH level is ideal for cinnamon cultivation";
+        } else if (ph >= 5.0 && ph < 5.5) {
+            percentage = 70;
+            status = "Slightly Acidic";
+            statusSinhala = "සුළු අම්ලීය";
+            statusType = "good";
+            recommendation = "Consider adding lime to slightly increase pH";
+        } else if (ph > 7.0 && ph <= 7.5) {
+            percentage = 70;
+            status = "Slightly Alkaline";
+            statusSinhala = "සුළු ක්ෂාරීය";
+            statusType = "good";
+            recommendation = "Consider adding sulfur to slightly decrease pH";
+        } else if (ph < 5.0) {
+            percentage = 40;
+            status = "Too Acidic";
+            statusSinhala = "ඉතා අම්ලීය";
+            statusType = "warning";
+            recommendation = "Add lime to increase pH";
+        } else {
+            percentage = 40;
+            status = "Too Alkaline";
+            statusSinhala = "ඉතා ක්ෂාරීය";
+            statusType = "warning";
+            recommendation = "Add sulfur to decrease pH";
+        }
+
+        return { percentage, status, statusSinhala, statusType, recommendation };
+    };
+
+    // Helper function to analyze EC
+    const analyzeEC = (ec) => {
+        const optimal = 1.75; // Optimal EC for cinnamon (middle of 1.0-2.5 range)
+        let percentage, status, statusSinhala, statusType, recommendation;
+
+        // Calculate percentage based on how close to optimal range (1.0-2.5)
+        if (ec >= 1.0 && ec <= 2.5) {
+            // Within optimal range
+            const distanceFromOptimal = Math.abs(ec - optimal);
+            percentage = Math.round(100 - (distanceFromOptimal / 0.75) * 10); // 0.75 is half of 1.5 range
+            status = "Optimal Range";
+            statusSinhala = "ප්‍රශස්ත පරාසය";
+            statusType = "optimal";
+            recommendation = "EC level is ideal for nutrient availability";
+        } else if (ec >= 0.5 && ec < 1.0) {
+            percentage = Math.round((ec / 1.0) * 60); // Scale to 0-60%
+            status = "Low";
+            statusSinhala = "අඩු";
+            statusType = "warning";
+            recommendation = "Monitor salt levels in irrigation water";
+        } else if (ec > 2.5 && ec <= 4.0) {
+            percentage = Math.round(70 - ((ec - 2.5) / 1.5) * 30); // Scale from 70% down to 40%
+            status = "High";
+            statusSinhala = "ඉහළ";
+            statusType = "warning";
+            recommendation = "Reduce fertilizer application or flush soil";
+        } else if (ec > 4.0) {
+            percentage = 30;
+            status = "Very High";
+            statusSinhala = "ඉතා ඉහළ";
+            statusType = "critical";
+            recommendation = "Flush soil immediately to reduce salt buildup";
+        } else {
+            percentage = 30;
+            status = "Very Low";
+            statusSinhala = "ඉතා අඩු";
+            statusType = "critical";
+            recommendation = "Increase fertilizer application";
+        }
+
+        return { percentage, status, statusSinhala, statusType, recommendation };
+    };
+
+    // Real data from sensor (or default values if not available)
+    const N = sensorData?.nitrogen || 0;
+    const P = sensorData?.phosphorus || 0;
+    const K = sensorData?.potassium || 0;
+    const pH = sensorData?.ph || 0;
+    const EC = sensorData?.ec || 0;
+
+    // Analyze each nutrient with optimal ranges for cinnamon
+    const nitrogenAnalysis = analyzeNutrient(N, 100, "Nitrogen"); // Optimal: 100 mg/kg
+    const phosphorusAnalysis = analyzeNutrient(P, 60, "Phosphorus"); // Optimal: 60 mg/kg
+    const potassiumAnalysis = analyzeNutrient(K, 120, "Potassium"); // Optimal: 120 mg/kg
+    const phAnalysis = analyzePH(pH);
+    const ecAnalysis = analyzeEC(EC);
+
     const nutrients = [
         {
             label: "Nitrogen (N)",
             labelSinhala: "නයිට්රජන්",
-            percentage: 20,
-            status: "High Deficit",
-            statusSinhala: "අධික හිඟය",
-            statusType: "critical",
+            ...nitrogenAnalysis,
             icon: "leaf",
-            recommendation: "Apply nitrogen-rich fertilizer within 7 days",
         },
         {
             label: "Phosphorus (P)",
             labelSinhala: "පොස්පරස්",
-            percentage: 50,
-            status: "Moderate Deficit",
-            statusSinhala: "මධ්‍යස්ථ හිඟය",
-            statusType: "warning",
+            ...phosphorusAnalysis,
             icon: "atom",
-            recommendation: "Consider adding bone meal or rock phosphate",
         },
         {
             label: "Potassium (K)",
             labelSinhala: "පොටෑසියම්",
-            percentage: 80,
-            status: "Optimal Level",
-            statusSinhala: "ප්‍රශස්ත මට්ටම",
-            statusType: "optimal",
+            ...potassiumAnalysis,
             icon: "flask",
-            recommendation: "Maintain current fertilization schedule",
         },
         {
             label: "pH Level",
             labelSinhala: "pH මට්ටම",
-            percentage: 65,
-            status: "Slightly Acidic",
-            statusSinhala: "සුළු අම්ලීය",
-            statusType: "good",
+            ...phAnalysis,
             icon: "test-tube",
-            recommendation: "Add lime to increase pH if needed",
         },
         {
             label: "Electrical Conductivity",
             labelSinhala: "විද්‍යුත් සන්නායකතාව",
-            percentage: 45,
-            status: "Low",
-            statusSinhala: "අඩු",
-            statusType: "warning",
+            ...ecAnalysis,
             icon: "flash",
-            recommendation: "Monitor salt levels in irrigation water",
         },
     ];
 
@@ -203,6 +356,11 @@ export default function SoilAnalyzeScreen() {
                 end={{ x: 1, y: 1 }}
                 style={styles.headerGradient}
             >
+                {/* Decorative circles */}
+                <View style={styles.decorativeCircle1} />
+                <View style={styles.decorativeCircle2} />
+                <View style={styles.decorativeCircle3} />
+
                 <View style={styles.headerContent}>
                     <View style={styles.topBar}>
                         <TouchableOpacity
@@ -227,21 +385,21 @@ export default function SoilAnalyzeScreen() {
 
                     {/* Overall Health Indicator */}
                     <View style={styles.healthOverview}>
-                        <View style={styles.healthCircle}>
-                            <Text style={styles.healthValue}>{overallHealth}%</Text>
-                            <Text style={styles.healthLabel}>Overall</Text>
-                        </View>
-                        <View style={styles.healthInfo}>
-                            <Text style={styles.healthTitle}>Soil Health Score</Text>
-                            <Text style={styles.healthSubtitle}>පස සෞඛ්‍ය ලකුණු</Text>
-                            <View style={styles.healthStatus}>
-                                <View style={[styles.healthDot, { backgroundColor: overallHealth >= 60 ? "#4CAF50" : "#FF9800" }]} />
-                                <Text style={styles.healthStatusText}>
-                                    {overallHealth >= 70 ? "Good Condition" : overallHealth >= 50 ? "Needs Attention" : "Critical"}
-                                </Text>
-                            </View>
+                    <View style={styles.healthCircle}>
+                        <Text style={styles.healthValue}>{overallHealth}%</Text>
+                        <Text style={styles.healthLabel}>Overall</Text>
+                    </View>
+                    <View style={styles.healthInfo}>
+                        <Text style={styles.healthTitle}>Soil Health Score</Text>
+                        <Text style={styles.healthSubtitle}>පස සෞඛ්‍ය ලකුණු</Text>
+                        <View style={styles.healthStatus}>
+                            <View style={[styles.healthDot, { backgroundColor: overallHealth >= 60 ? "#4CAF50" : "#FF9800" }]} />
+                            <Text style={styles.healthStatusText}>
+                                {overallHealth >= 70 ? "Good Condition" : overallHealth >= 50 ? "Needs Attention" : "Critical"}
+                            </Text>
                         </View>
                     </View>
+                </View>
                 </View>
             </LinearGradient>
 
@@ -308,32 +466,6 @@ export default function SoilAnalyzeScreen() {
                     </Text>
                 </LinearGradient>
 
-                {/* Action Buttons */}
-                <View style={styles.actionSection}>
-                    <TouchableOpacity style={styles.primaryButton}>
-                        <LinearGradient
-                            colors={["#1B5E20", "#2E7D32"]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.primaryButtonGradient}
-                        >
-                            <MaterialCommunityIcons name="file-document-outline" size={20} color="#FFFFFF" />
-                            <Text style={styles.primaryButtonText}>Annalyze Soli Fertilizer</Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
-
-                    <View style={styles.secondaryButtons}>
-                        <TouchableOpacity style={styles.secondaryButton}>
-                            <MaterialCommunityIcons name="share-variant" size={20} color="#1B5E20" />
-                            <Text style={styles.secondaryButtonText}>Share</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.secondaryButton}>
-                            <MaterialCommunityIcons name="history" size={20} color="#1B5E20" />
-                            <Text style={styles.secondaryButtonText}>History</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
                 <View style={{ height: 30 }} />
             </ScrollView>
         </View>
@@ -350,6 +482,35 @@ const styles = StyleSheet.create({
         paddingBottom: 25,
         borderBottomLeftRadius: 28,
         borderBottomRightRadius: 28,
+        position: "relative",
+        overflow: "hidden",
+    },
+    decorativeCircle1: {
+        position: "absolute",
+        top: -60,
+        right: -40,
+        width: 160,
+        height: 160,
+        borderRadius: 80,
+        backgroundColor: "rgba(255,255,255,0.08)",
+    },
+    decorativeCircle2: {
+        position: "absolute",
+        bottom: -40,
+        left: -40,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: "rgba(255,255,255,0.06)",
+    },
+    decorativeCircle3: {
+        position: "absolute",
+        top: 40,
+        left: width * 0.4,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: "rgba(255,255,255,0.04)",
     },
     headerContent: {
         paddingHorizontal: 20,

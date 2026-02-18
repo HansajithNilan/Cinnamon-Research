@@ -763,7 +763,7 @@ const styles = StyleSheet.create({
   },
   cardGradient: {
     padding: 18,
-    minHeight: 140,
+    height: 160,
   },
   cardIconContainer: {
     width: 52,

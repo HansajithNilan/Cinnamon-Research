@@ -1,29 +1,37 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
-    TouchableOpacity,
     Dimensions,
+    ActivityIndicator,
+    Platform,
+    TouchableOpacity,
 } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
 import { colors } from "../styles/colors";
+import { subscribeToLatestReading, formatTimestamp, formatTimeAgo } from "../services/firebaseService";
 
 // Import screens
 import AnalysisScreen from "./AnalysisScreen";
 import TipsScreen from "./TipsScreen";
-import MapScreen from "./MapScreen";
 import HistoryScreen from "./HistoryScreen";
 import SettingsScreen from "./SettingsScreen";
 import SoilAnalyzeScreen from "./soilAnalyzeScreen";
 
 const Tab = createBottomTabNavigator();
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
+
+// Responsive tab bar height based on screen size
+const getTabBarHeight = () => {
+    if (height < 700) return 60; // Small screens
+    if (height < 800) return 65; // Medium screens
+    return 70; // Large screens
+};
 
 // Color schemes for different metrics
 const metricColors = {
@@ -147,12 +155,7 @@ const TemperatureCard = ({ temperature }) => {
     const percentage = Math.min((temperature / 50) * 100, 100);
 
     return (
-        <LinearGradient
-            colors={[metricColors.temperature.bg, "#FFFFFF"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.temperatureCard}
-        >
+        <View style={styles.temperatureCard}>
             <View style={styles.tempHeader}>
                 <View style={[styles.tempIconContainer, { backgroundColor: metricColors.temperature.primary + "20" }]}>
                     <MaterialCommunityIcons name="thermometer" size={28} color={metricColors.temperature.primary} />
@@ -174,23 +177,116 @@ const TemperatureCard = ({ temperature }) => {
             <View style={styles.tempRange}>
                 <Text style={styles.tempRangeText}>Optimal: 20°C - 30°C</Text>
             </View>
-        </LinearGradient>
+        </View>
     );
 };
 
-function SoilMonitorScreen() {
-    const navigation = useNavigation();
-    
-    // Sample data - replace with real sensor data
-    const sensorData = {
-        nitrogen: 75,
-        phosphorus: 50,
-        potassium: 60,
-        moisture: 80,
-        ph: 6.5,
-        ec: 1.2,
-        temperature: 25,
-    };
+function SoilMonitorScreen({ navigation }) {
+    const [isLoading, setIsLoading] = useState(true);
+    const [lastUpdate, setLastUpdate] = useState(null);
+    const [isOnline, setIsOnline] = useState(false);
+
+    // Real-time sensor data from Firebase
+    const [sensorData, setSensorData] = useState({
+        nitrogen: 0,
+        phosphorus: 0,
+        potassium: 0,
+        moisture: 0,
+        ph: 0,
+        ec: 0,
+        temperature: 0,
+    });
+
+    // Subscribe to Firebase real-time updates
+    useEffect(() => {
+        console.log('Subscribing to Firebase real-time data...');
+
+        const unsubscribe = subscribeToLatestReading((result) => {
+            if (result.success) {
+                console.log('Received sensor data from Firebase:', result.data);
+
+                // Convert sensor readings to percentage (0-100 scale for display)
+                const nitrogenPercent = Math.min((result.data.nitrogen / 100) * 100, 100);
+                const phosphorusPercent = Math.min((result.data.phosphorus / 60) * 100, 100);
+                const potassiumPercent = Math.min((result.data.potassium / 120) * 100, 100);
+                const moisturePercent = Math.min(result.data.moisture, 100);
+
+                setSensorData({
+                    nitrogen: Math.round(nitrogenPercent),
+                    phosphorus: Math.round(phosphorusPercent),
+                    potassium: Math.round(potassiumPercent),
+                    moisture: Math.round(moisturePercent),
+                    ph: result.data.ph || 0,
+                    ec: result.data.ec || 0,
+                    temperature: result.data.temperature || 0,
+                });
+
+                // Always use timestamp from Firebase data
+                const dataTimestamp = result.data.timestamp;
+                setLastUpdate(dataTimestamp);
+
+                // Check if data is fresh (within 1 minute)
+                const now = Date.now();
+                const timeDifference = now - dataTimestamp;
+                const isDataFresh = timeDifference < 60000; // 1 minute
+
+                setIsOnline(isDataFresh);
+                setIsLoading(false);
+            } else {
+                console.error('Failed to fetch sensor data:', result.error);
+                setIsOnline(false);
+                setIsLoading(false);
+            }
+        });
+
+        // Cleanup subscription on unmount
+        return () => {
+            console.log('Unsubscribing from Firebase...');
+            unsubscribe();
+        };
+    }, []);
+
+    // Check if data is stale (older than 1 minute) and update online status
+    useEffect(() => {
+        const checkDataFreshness = () => {
+            if (lastUpdate) {
+                const now = Date.now();
+                const oneMinute = 60 * 1000; // 1 minute in milliseconds
+                const timeSinceUpdate = now - lastUpdate;
+
+                if (timeSinceUpdate > oneMinute) {
+                    // Data is stale - mark as offline
+                    if (isOnline) {
+                        console.log('Data is stale (>1 min). Marking device as offline.');
+                        setIsOnline(false);
+                    }
+                } else {
+                    // Data is fresh - ensure marked as online
+                    if (!isOnline) {
+                        setIsOnline(true);
+                    }
+                }
+            }
+        };
+
+        // Check immediately
+        checkDataFreshness();
+
+        // Then check every 5 seconds
+        const interval = setInterval(checkDataFreshness, 5000);
+
+        return () => clearInterval(interval);
+    }, [lastUpdate, isOnline]);
+
+    // Show loading screen
+    if (isLoading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#1B5E20" />
+                <Text style={{ marginTop: 10, color: "#666" }}>Loading sensor data...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -201,6 +297,11 @@ function SoilMonitorScreen() {
                 end={{ x: 1, y: 1 }}
                 style={styles.headerGradient}
             >
+                {/* Decorative circles */}
+                <View style={styles.decorativeCircle1} />
+                <View style={styles.decorativeCircle2} />
+                <View style={styles.decorativeCircle3} />
+
                 <View style={styles.headerContent}>
                     <View style={styles.topBar}>
                         <TouchableOpacity
@@ -213,36 +314,85 @@ function SoilMonitorScreen() {
                             <Text style={styles.greetingText}>Welcome Back</Text>
                             <Text style={styles.brandText}>Soil Monitor</Text>
                         </View>
-                        <TouchableOpacity style={styles.profileButton}>
+                        <View style={styles.rightButton}>
                             <LinearGradient
                                 colors={["rgba(255,255,255,0.3)", "rgba(255,255,255,0.1)"]}
-                                style={styles.profileGradient}
+                                style={styles.rightButtonGradient}
                             >
                                 <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
                             </LinearGradient>
-                        </TouchableOpacity>
+                        </View>
                     </View>
 
-                    {/* Module Status */}
-                    <View style={styles.moduleStatus}>
+                    {/* Module Status Card */}
+                    <View style={styles.statusCard}>
+                    <View style={styles.statusCardTop}>
                         <View style={styles.moduleInfo}>
-                            <MaterialCommunityIcons name="chip" size={20} color="#FFFFFF" />
-                            <Text style={styles.moduleText}>Module 1</Text>
-                        </View>
-                        <View style={styles.onlineStatus}>
-                            <View style={styles.pulseOuter}>
-                                <View style={styles.pulseInner} />
+                            <View style={styles.chipIconContainer}>
+                                <MaterialCommunityIcons name="chip" size={18} color="#1B5E20" />
                             </View>
-                            <Text style={styles.onlineText}>Online</Text>
+                            <View>
+                                <Text style={styles.moduleText}>ESP32-A1</Text>
+                                <Text style={styles.moduleSubtext}>Soil Sensor Module</Text>
+                            </View>
+                        </View>
+                        <View style={[styles.statusBadge, {
+                            backgroundColor: isOnline ? "#E8F5E9" : "#FFEBEE"
+                        }]}>
+                            <View style={[styles.statusDot, {
+                                backgroundColor: isOnline ? "#4CAF50" : "#F44336"
+                            }]} />
+                            <Text style={[styles.statusText, {
+                                color: isOnline ? "#2E7D32" : "#C62828"
+                            }]}>
+                                {isOnline ? "Online" : "Offline"}
+                            </Text>
                         </View>
                     </View>
+
+                    {lastUpdate && (
+                        <View style={styles.syncInfo}>
+                            <View style={[styles.syncIconContainer, {
+                                backgroundColor: isOnline ? "#E8F5E9" : "#FFF3E0"
+                            }]}>
+                                <MaterialCommunityIcons
+                                    name={isOnline ? "sync" : "sync-alert"}
+                                    size={14}
+                                    color={isOnline ? "#43A047" : "#F57C00"}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.syncText, {
+                                    color: isOnline ? "#616161" : "#757575"
+                                }]}>
+                                    Last sync: {formatTimestamp(lastUpdate)}
+                                </Text>
+                                <Text style={styles.syncTimeAgo}>
+                                    {formatTimeAgo(lastUpdate)}
+                                </Text>
+                            </View>
+                            <View style={[styles.syncBadge, {
+                                backgroundColor: isOnline ? "#E8F5E9" : "#FFF3E0"
+                            }]}>
+                                <MaterialCommunityIcons
+                                    name={isOnline ? "check-circle" : "alert-circle"}
+                                    size={12}
+                                    color={isOnline ? "#4CAF50" : "#F57C00"}
+                                />
+                            </View>
+                        </View>
+                    )}
+                </View>
                 </View>
             </LinearGradient>
 
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    { paddingBottom: getTabBarHeight() + 20 }
+                ]}
             >
                 {/* Real-time Data Section */}
                 <View style={styles.section}>
@@ -303,57 +453,15 @@ function SoilMonitorScreen() {
                     {/* Temperature Card */}
                     <TemperatureCard temperature={sensorData.temperature} />
                 </View>
-
-                {/* Quick Actions */}
-                <View style={styles.quickActions}>
-                    <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-                    <View style={styles.actionButtons}>
-                        <TouchableOpacity style={styles.actionButton}>
-                            <LinearGradient
-                                colors={["#2196F3", "#1976D2"]}
-                                style={styles.actionGradient}
-                            >
-                                <MaterialCommunityIcons name="refresh" size={22} color="#FFFFFF" />
-                            </LinearGradient>
-                            <Text style={styles.actionText}>Refresh</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionButton}>
-                            <LinearGradient
-                                colors={["#4CAF50", "#388E3C"]}
-                                style={styles.actionGradient}
-                            >
-                                <MaterialCommunityIcons name="download" size={22} color="#FFFFFF" />
-                            </LinearGradient>
-                            <Text style={styles.actionText}>Export</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionButton}>
-                            <LinearGradient
-                                colors={["#FF9800", "#F57C00"]}
-                                style={styles.actionGradient}
-                            >
-                                <MaterialCommunityIcons name="bell-outline" size={22} color="#FFFFFF" />
-                            </LinearGradient>
-                            <Text style={styles.actionText}>Alerts</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionButton}>
-                            <LinearGradient
-                                colors={["#9C27B0", "#7B1FA2"]}
-                                style={styles.actionGradient}
-                            >
-                                <MaterialCommunityIcons name="history" size={22} color="#FFFFFF" />
-                            </LinearGradient>
-                            <Text style={styles.actionText}>History</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                <View style={{ height: 30 }} />
             </ScrollView>
         </View>
     );
 }
 
 export default function SoilDashboardNavigator() {
+    const tabBarHeight = getTabBarHeight();
+    const isSmallScreen = height < 700;
+
     return (
         <Tab.Navigator
             screenOptions={({ route }) => ({
@@ -366,20 +474,21 @@ export default function SoilDashboardNavigator() {
                         iconName = focused ? "analytics" : "analytics-outline";
                     } else if (route.name === "Tips") {
                         iconName = focused ? "bulb" : "bulb-outline";
-                    } else if (route.name === "Map") {
-                        iconName = focused ? "map" : "map-outline";
                     } else if (route.name === "History") {
                         iconName = focused ? "time" : "time-outline";
                     }
 
-                    return <Ionicons name={iconName} size={20} color={color} />;
+                    // Responsive icon size
+                    const iconSize = isSmallScreen ? 22 : 24;
+                    return <Ionicons name={iconName} size={iconSize} color={color} />;
                 },
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.textSecondary,
                 tabBarStyle: {
-                    height: 65,
-                    paddingBottom: 8,
-                    paddingTop: 8,
+                    height: tabBarHeight,
+                    paddingBottom: Platform.OS === 'ios' ? (isSmallScreen ? 8 : 10) : 8,
+                    paddingTop: isSmallScreen ? 6 : 8,
+                    paddingHorizontal: width > 400 ? 10 : 5,
                     backgroundColor: colors.white,
                     borderTopWidth: 1,
                     borderTopColor: colors.border,
@@ -393,21 +502,39 @@ export default function SoilDashboardNavigator() {
                     shadowRadius: 3,
                 },
                 tabBarLabelStyle: {
-                    fontSize: 10,
+                    fontSize: isSmallScreen ? 9 : 10,
                     fontWeight: "600",
-                    marginTop: 2,
+                    marginTop: isSmallScreen ? 1 : 2,
+                    marginBottom: Platform.OS === 'android' ? 2 : 0,
                 },
                 tabBarItemStyle: {
-                    paddingVertical: 5,
+                    paddingVertical: isSmallScreen ? 4 : 6,
+                    justifyContent: 'center',
+                    alignItems: 'center',
                 },
                 headerShown: false,
             })}
         >
-            <Tab.Screen name="Dashboard" component={SoilMonitorScreen} />
-            <Tab.Screen name="Analysis" component={SoilAnalyzeScreen} />
-            <Tab.Screen name="Tips" component={TipsScreen} />
-            <Tab.Screen name="Map" component={MapScreen} />
-            <Tab.Screen name="History" component={HistoryScreen} />
+            <Tab.Screen
+                name="Dashboard"
+                component={SoilMonitorScreen}
+                options={{ tabBarLabel: 'Dashboard' }}
+            />
+            <Tab.Screen
+                name="Analysis"
+                component={SoilAnalyzeScreen}
+                options={{ tabBarLabel: 'Analysis' }}
+            />
+            <Tab.Screen
+                name="Tips"
+                component={TipsScreen}
+                options={{ tabBarLabel: 'Tips' }}
+            />
+            <Tab.Screen
+                name="History"
+                component={HistoryScreen}
+                options={{ tabBarLabel: 'History' }}
+            />
         </Tab.Navigator>
     );
 }
@@ -422,6 +549,35 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
         borderBottomLeftRadius: 28,
         borderBottomRightRadius: 28,
+        position: "relative",
+        overflow: "hidden",
+    },
+    decorativeCircle1: {
+        position: "absolute",
+        top: -60,
+        right: -40,
+        width: 160,
+        height: 160,
+        borderRadius: 80,
+        backgroundColor: "rgba(255,255,255,0.08)",
+    },
+    decorativeCircle2: {
+        position: "absolute",
+        bottom: -40,
+        left: -40,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: "rgba(255,255,255,0.06)",
+    },
+    decorativeCircle3: {
+        position: "absolute",
+        top: 40,
+        left: width * 0.4,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: "rgba(255,255,255,0.04)",
     },
     headerContent: {
         paddingHorizontal: 20,
@@ -438,10 +594,10 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(255,255,255,0.2)",
         justifyContent: "center",
         alignItems: "center",
+        marginRight: 12,
     },
     headerTitleContainer: {
         flex: 1,
-        marginLeft: 15,
     },
     greetingText: {
         fontSize: 13,
@@ -454,58 +610,117 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         letterSpacing: 0.5,
     },
-    profileButton: {
+    rightButton: {
         marginLeft: 10,
     },
-    profileGradient: {
+    rightButtonGradient: {
         width: 42,
         height: 42,
         borderRadius: 14,
         justifyContent: "center",
         alignItems: "center",
     },
-    moduleStatus: {
+    statusCard: {
+        marginTop: 20,
+        backgroundColor: "#FFFFFF",
+        borderRadius: 16,
+        padding: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    statusCardTop: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        marginTop: 20,
-        backgroundColor: "rgba(255,255,255,0.15)",
-        borderRadius: 14,
-        padding: 14,
     },
     moduleInfo: {
         flexDirection: "row",
         alignItems: "center",
+        flex: 1,
     },
-    moduleText: {
-        color: "#FFFFFF",
-        fontSize: 15,
-        fontWeight: "600",
-        marginLeft: 10,
-    },
-    onlineStatus: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    pulseOuter: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        backgroundColor: "rgba(76, 175, 80, 0.3)",
+    chipIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: "#E8F5E9",
         justifyContent: "center",
         alignItems: "center",
+        marginRight: 12,
     },
-    pulseInner: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: "#4CAF50",
+    moduleText: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#1B5E20",
+        letterSpacing: 0.3,
     },
-    onlineText: {
-        color: "#FFFFFF",
-        fontSize: 14,
+    moduleSubtext: {
+        fontSize: 12,
+        color: "#757575",
+        marginTop: 2,
+        fontWeight: "500",
+    },
+    statusBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginRight: 6,
+    },
+    statusText: {
+        fontSize: 13,
+        fontWeight: "700",
+        letterSpacing: 0.3,
+    },
+    syncInfo: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 14,
+        paddingTop: 14,
+        borderTopWidth: 1,
+        borderTopColor: "#F0F0F0",
+    },
+    syncIconContainer: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: "#E8F5E9",
+        justifyContent: "center",
+        alignItems: "center",
+        marginRight: 8,
+    },
+    syncText: {
+        fontSize: 13,
+        color: "#616161",
         fontWeight: "600",
-        marginLeft: 8,
+    },
+    syncTimeAgo: {
+        fontSize: 11,
+        color: "#9E9E9E",
+        fontWeight: "500",
+        marginTop: 2,
+    },
+    syncSubtext: {
+        fontSize: 11,
+        color: "#F57C00",
+        fontWeight: "500",
+        marginTop: 3,
+    },
+    syncBadge: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: "#E8F5E9",
+        justifyContent: "center",
+        alignItems: "center",
     },
     scrollView: {
         flex: 1,
@@ -623,6 +838,7 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     temperatureCard: {
+        backgroundColor: metricColors.temperature.bg,
         borderRadius: 20,
         padding: 24,
         alignItems: "center",
@@ -675,41 +891,5 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: "#E91E63",
         fontWeight: "500",
-    },
-    quickActions: {
-        paddingHorizontal: 20,
-        paddingBottom: 10,
-    },
-    quickActionsTitle: {
-        fontSize: 16,
-        fontWeight: "bold",
-        color: "#1B5E20",
-        marginBottom: 14,
-    },
-    actionButtons: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-    },
-    actionButton: {
-        alignItems: "center",
-        width: "22%",
-    },
-    actionGradient: {
-        width: 52,
-        height: 52,
-        borderRadius: 16,
-        justifyContent: "center",
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    actionText: {
-        fontSize: 11,
-        fontWeight: "600",
-        color: "#444",
-        marginTop: 8,
     },
 });

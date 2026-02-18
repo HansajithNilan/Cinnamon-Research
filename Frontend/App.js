@@ -31,6 +31,7 @@ import VacantAreaHomeScreen from "./src/screens/vacantAreaHome";
 import AnalysisDetailsScreen from "./src/screens/AnalysisDetailsScreen";
 import GeneralSettingsScreen from "./src/screens/GeneralSettingsScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
+import DetailedHistoryScreen from "./src/screens/DetailedHistoryScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -101,6 +102,8 @@ export default function App() {
         <Stack.Screen name="Analysis" component={AnalysisScreen} />
         <Stack.Screen name="Details" component={AnalysisDetailsScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="History" component={HistoryScreen} />
+        <Stack.Screen name="DetailedHistory" component={DetailedHistoryScreen} />
 
       </Stack.Navigator>
     </NavigationContainer>
