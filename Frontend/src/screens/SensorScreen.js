@@ -1,153 +1,350 @@
-import React from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Dimensions,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../styles/colors";
+import {
+  THRESHOLDS,
+  getTempStatus,
+  getHumidityStatus,
+  getCO2Status,
+  getVOCStatus,
+  getLightStatus,
+  getMotionStatus,
+  getAirQualityStatus,
+} from "../config/warehouseThresholds";
+import { initializeApp, getApps } from "firebase/app";
+import { getDatabase, ref, onValue, off } from "firebase/database";
 
 const { width } = Dimensions.get("window");
 const cardWidth = (width - 52) / 2;
 
+// Warehouse Firebase config (separate from soil project)
+const warehouseFirebaseConfig = {
+  apiKey: "AIzaSyDUFvbL5N39Jt_eAOf-X1RrDhkWOzBD0Fk",
+  databaseURL: "https://cinnamon-warehouse-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  projectId: "cinnamon-warehouse",
+};
+
+const DEVICE_ID = "249627E81F84";
+
+// Initialize warehouse Firebase app (avoid duplicate initialization)
+let warehouseApp;
+const existingApp = getApps().find((a) => a.name === "warehouse");
+if (existingApp) {
+  warehouseApp = existingApp;
+} else {
+  warehouseApp = initializeApp(warehouseFirebaseConfig, "warehouse");
+}
+const warehouseDb = getDatabase(warehouseApp);
+
+function formatTimeAgo(dateTimeStr) {
+  if (!dateTimeStr) return "—";
+  try {
+    // ESP32 sends local time (GMT+5:30) — append offset so JS parses correctly
+    const [datePart, timePart] = dateTimeStr.split(" ");
+    const past = new Date(`${datePart}T${timePart}+05:30`);
+    const diffMs = Date.now() - past.getTime();
+    if (diffMs < 0) return "just now";
+    const sec = Math.floor(diffMs / 1000);
+    const min = Math.floor(sec / 60);
+    const hr = Math.floor(min / 60);
+    const days = Math.floor(hr / 24);
+    if (sec < 60) return `${sec}s ago | තත්ප ${sec}කට පෙර`;
+    if (min < 60) return `${min} min ago | මිනිත්තු ${min}කට පෙර`;
+    if (hr < 24) return `${hr} hr ago | පැය ${hr}කට පෙර`;
+    if (days === 1) return `1 day ago | දිනයකට පෙර`;
+    return `${days} days ago | දින ${days}කට පෙර`;
+  } catch {
+    return dateTimeStr;
+  }
+}
+
+// Fetch the latest entry from a date-partitioned path
+function subscribeLatest(path, callback) {
+  const dbRef = ref(warehouseDb, path);
+  // Listen to the whole category node; we pick the last date and last timestamp
+  const listener = onValue(dbRef, (snap) => {
+    const data = snap.val();
+    if (!data) { callback(null); return; }
+
+    const dates = Object.keys(data).sort();
+    const latestDate = dates[dates.length - 1];
+    const timestamps = Object.keys(data[latestDate]).sort((a, b) => Number(a) - Number(b));
+    const latestTs = timestamps[timestamps.length - 1];
+    callback(data[latestDate][latestTs]);
+  }, (error) => {
+    console.error(`Firebase error at ${path}:`, error);
+    callback(null);
+  });
+
+  return () => off(dbRef, "value", listener);
+}
+
+// ─── Component ─────────────────────────────────────────────────────────────────
 const SensorScreen = ({ navigation }) => {
+  const [temperature, setTemperature] = useState(null);
+  const [humidity, setHumidity] = useState(null);
+  const [airQuality, setAirQuality] = useState(null); // { co2, voc, date_time }
+  const [light, setLight] = useState(null);           // { lux, brightness, date_time }
+  const [motion, setMotion] = useState(null);         // { motion_detected, motion_confidence, date_time }
+  const [loading, setLoading] = useState(true);
+  const [lastSyncTs, setLastSyncTs] = useState(null); // ms timestamp
+  const [isOnline, setIsOnline] = useState(false);
+
+  const unsubscribers = useRef([]);
+
+  // Check data freshness every 5 seconds (same logic as SoilDashboard)
+  useEffect(() => {
+    const check = () => {
+      if (lastSyncTs) {
+        const stale = Date.now() - lastSyncTs > 60000; // 1-minute threshold
+        setIsOnline(!stale);
+      }
+    };
+    check();
+    const id = setInterval(check, 5000);
+    return () => clearInterval(id);
+  }, [lastSyncTs]);
+
+  useEffect(() => {
+    const basePath = `devices/${DEVICE_ID}`;
+    let loadedCount = 0;
+    const totalSources = 4;
+
+    // Parse "YYYY-MM-DD HH:MM:SS" from ESP32 into a ms timestamp
+    function parseSensorDateTime(dateTimeStr) {
+      if (!dateTimeStr) return null;
+      try {
+        const [datePart, timePart] = dateTimeStr.split(" ");
+        return new Date(`${datePart}T${timePart}+05:30`).getTime();
+      } catch {
+        return null;
+      }
+    }
+
+    function markLoaded(entry) {
+      loadedCount++;
+      // Use the actual sensor date_time so freshness reflects real device activity
+      if (entry?.date_time) {
+        const ts = parseSensorDateTime(entry.date_time);
+        if (ts) setLastSyncTs(ts);
+      }
+      if (loadedCount >= totalSources) {
+        setLoading(false);
+      }
+    }
+
+    // Temperature
+    const unsubTemp = subscribeLatest(`${basePath}/temperature_data`, (entry) => {
+      setTemperature(entry);
+      markLoaded(entry);
+    });
+
+    // Humidity
+    const unsubHumid = subscribeLatest(`${basePath}/humidity_data`, (entry) => {
+      setHumidity(entry);
+      markLoaded(entry);
+    });
+
+    // Air quality (CO2 + VOC)
+    const unsubAir = subscribeLatest(`${basePath}/air_quality_data`, (entry) => {
+      setAirQuality(entry);
+      markLoaded(entry);
+    });
+
+    // Light
+    const unsubLight = subscribeLatest(`${basePath}/light_data`, (entry) => {
+      setLight(entry);
+      markLoaded(entry);
+    });
+
+    // Motion — stored under motion_data, same date-partitioned structure
+    const motionRef = ref(warehouseDb, `${basePath}/motion_data`);
+    const motionListener = onValue(motionRef, (snap) => {
+      const data = snap.val();
+      if (!data) { setMotion(null); return; }
+      const dates = Object.keys(data).sort();
+      const latestDate = dates[dates.length - 1];
+      const timestamps = Object.keys(data[latestDate]).sort((a, b) => Number(a) - Number(b));
+      const latestTs = timestamps[timestamps.length - 1];
+      setMotion(data[latestDate][latestTs]);
+    });
+
+    unsubscribers.current = [
+      unsubTemp,
+      unsubHumid,
+      unsubAir,
+      unsubLight,
+      () => off(motionRef, "value", motionListener),
+    ];
+
+    return () => {
+      unsubscribers.current.forEach((fn) => fn && fn());
+    };
+  }, []);
+
+  // Derived values
+  const tempVal = temperature?.value ?? null;
+  const humidVal = humidity?.value ?? null;
+  const co2Val = airQuality?.co2 ?? null;
+  const vocVal = airQuality?.voc ?? null;
+  const luxVal = light?.lux ?? null;
+  const motionDetected = motion?.motion_detected ?? null;
+  const motionConfidence = motion?.motion_confidence ?? null;
+
+  const tempStatus = getTempStatus(tempVal);
+  const humidStatus = getHumidityStatus(humidVal);
+  const co2Status = getCO2Status(co2Val);
+  const vocStatus = getVOCStatus(vocVal);
+  const lightStatus = getLightStatus(luxVal);
+  const motionStatus = getMotionStatus(motionDetected);
+  const airQualityStatus = getAirQualityStatus(co2Val);
+
   const sensorData = [
     {
       id: 1,
       icon: "thermometer-outline",
       title: "Temperature | උෂ්ණත්වය",
-      value: "22°C",
-      unit: "",
-      status: "Normal | සාමාන්‍ය",
-      statusColor: "#00B894",
+      value: tempVal !== null ? tempVal.toFixed(1) : "--",
+      unit: "°C",
+      status: tempStatus.label,
+      statusColor: tempStatus.color,
       gradient: ["#FF6B6B", "#EE5A5A"],
-      iconBg: "rgba(255, 107, 107, 0.15)",
       trend: "stable",
-      lastReading: "2 min ago | මිනිත්තු 2කට පෙර",
+      lastReading: formatTimeAgo(temperature?.date_time),
     },
     {
       id: 2,
       icon: "water-outline",
       title: "Humidity | ආර්ද්‍රතාවය",
-      value: "65",
+      value: humidVal !== null ? humidVal.toFixed(1) : "--",
       unit: "%",
-      status: "Optimal | ප්‍රශස්ත",
-      statusColor: "#00B894",
+      status: humidStatus.label,
+      statusColor: humidStatus.color,
       gradient: ["#4ECDC4", "#45B7AA"],
-      iconBg: "rgba(78, 205, 196, 0.15)",
-      trend: "up",
-      lastReading: "1 min ago | මිනිත්තු 1කට පෙර",
+      trend: "stable",
+      lastReading: formatTimeAgo(humidity?.date_time),
     },
     {
       id: 3,
       icon: "sunny-outline",
       title: "Light Intensity | ආලෝක තීව්‍රතාවය",
-      value: "450",
+      value: luxVal !== null ? Math.round(luxVal).toLocaleString() : "--",
       unit: " lux",
-      status: "Indirect | වක්‍ර",
-      statusColor: "#00B894",
+      status: lightStatus.label,
+      statusColor: lightStatus.color,
       gradient: ["#FFE66D", "#FFD93D"],
-      iconBg: "rgba(255, 230, 109, 0.2)",
-      trend: "down",
-      lastReading: "3 min ago | මිනිත්තු 3කට පෙර",
+      trend: "stable",
+      lastReading: formatTimeAgo(light?.date_time),
     },
     {
       id: 4,
       icon: "shield-checkmark-outline",
       title: "Pest Control | පළිබෝධ පාලනය",
-      value: "Low | අඩු",
-      unit: " Activity | ක්‍රියාකාරිත්වය",
-      status: "Clean | පිරිසිදු",
-      statusColor: "#00B894",
+      value: motionDetected === null ? "--" : motionDetected ? "Active | සක්‍රිය" : "Low | අඩු",
+      unit: motionConfidence !== null ? ` (${motionConfidence}%)` : "",
+      status: motionStatus.label,
+      statusColor: motionStatus.color,
       gradient: ["#00B894", "#00A085"],
-      iconBg: "rgba(0, 184, 148, 0.15)",
       trend: "stable",
-      lastReading: "5 min ago | මිනිත්තු 5කට පෙර",
+      lastReading: formatTimeAgo(motion?.date_time),
     },
     {
       id: 6,
       icon: "speedometer-outline",
       title: "Air Quality | වායු ගුණාත්මකභාවය",
-      value: "Good | හොඳ",
+      value: airQualityStatus.label.split("|")[0].trim(),
       unit: "",
-      status: "Healthy | සෞඛ්‍ය සම්පන්න",
-      statusColor: "#00B894",
+      status: airQualityStatus.label,
+      statusColor: airQualityStatus.color,
       gradient: ["#74B9FF", "#5AA3E8"],
-      iconBg: "rgba(116, 185, 255, 0.15)",
-      trend: "up",
-      lastReading: "2 min ago | මිනිත්තු 2කට පෙර",
+      trend: "stable",
+      lastReading: formatTimeAgo(airQuality?.date_time),
     },
     {
       id: 7,
       icon: "cloud-outline",
       title: "CO₂ Level | CO₂ මට්ටම",
-      value: "420",
+      value: co2Val !== null ? Math.round(co2Val).toString() : "--",
       unit: " ppm",
-      status: "Normal | සාමාන්‍ය",
-      statusColor: "#00B894",
+      status: co2Status.label,
+      statusColor: co2Status.color,
       gradient: ["#A29BFE", "#8B7CF6"],
-      iconBg: "rgba(162, 155, 254, 0.15)",
       trend: "stable",
-      lastReading: "1 min ago | මිනිත්තු 1කට පෙර",
+      lastReading: formatTimeAgo(airQuality?.date_time),
     },
     {
       id: 8,
       icon: "rainy-outline",
       title: "Air Moisture | වායු තෙතමනය",
-      value: "58",
-      unit: " g/m³",
-      status: "Optimal | ප්‍රශස්ත",
-      statusColor: "#00B894",
+      value: humidVal !== null ? humidVal.toFixed(1) : "--",
+      unit: " %RH",
+      status: humidStatus.label,
+      statusColor: humidStatus.color,
       gradient: ["#81ECEC", "#00CEC9"],
-      iconBg: "rgba(129, 236, 236, 0.15)",
-      trend: "down",
-      lastReading: "2 min ago | මිනිත්තු 2කට පෙර",
+      trend: "stable",
+      lastReading: formatTimeAgo(humidity?.date_time),
     },
     {
       id: 9,
       icon: "flask-outline",
       title: "VOC Level | VOC මට්ටම",
-      value: "0.12",
-      unit: " mg/m³",
-      status: "Safe | ආරක්ෂිත",
-      statusColor: "#00B894",
+      value: vocVal !== null ? vocVal.toFixed(1) : "--",
+      unit: " ppm",
+      status: vocStatus.label,
+      statusColor: vocStatus.color,
       gradient: ["#FD79A8", "#E84393"],
-      iconBg: "rgba(253, 121, 168, 0.15)",
       trend: "stable",
-      lastReading: "3 min ago | මිනිත්තු 3කට පෙර",
+      lastReading: formatTimeAgo(airQuality?.date_time),
     },
   ];
 
-  const getTrendIcon = (trend) => {
-    switch (trend) {
-      case "up": return "trending-up";
-      case "down": return "trending-down";
-      default: return "remove-outline";
-    }
+  const activeSensors = sensorData.filter((s) => s.value !== "--").length;
+  const optimalSensors = sensorData.filter((s) => s.statusColor === "#00B894").length;
+
+  const getTrendIcon = () => "remove-outline";
+
+  const formatTimestamp = (ts) => {
+    if (!ts) return "N/A";
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return "Just now";
+    return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
   };
 
-  const getTrendColor = (trend) => {
-    switch (trend) {
-      case "up": return "#00B894";
-      case "down": return "#FF6B6B";
-      default: return "#999";
-    }
+  const formatTimeAgoMs = (ts) => {
+    if (!ts) return "Never";
+    const diff = Date.now() - ts;
+    if (diff < 0) return "just now";
+    const sec = Math.floor(diff / 1000);
+    const min = Math.floor(sec / 60);
+    const hr = Math.floor(min / 60);
+    const days = Math.floor(hr / 24);
+    if (sec < 10) return "just now";
+    if (sec < 60) return `${sec} seconds ago`;
+    if (min === 1) return "1 minute ago";
+    if (min < 60) return `${min} minutes ago`;
+    if (hr === 1) return "1 hour ago";
+    if (hr < 24) return `${hr} hours ago`;
+    if (days === 1) return "1 day ago";
+    return `${days} days ago`;
   };
-
-  const activeSensors = sensorData.filter(s => s.status !== "Offline").length;
-  const optimalSensors = sensorData.filter(s => s.statusColor === "#00B894").length;
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#2E7D32" />
-      
+
       <View style={styles.headerWrapper}>
         <LinearGradient
           colors={["#2E7D32", "#4CAF50", "#66BB6A"]}
@@ -155,57 +352,55 @@ const SensorScreen = ({ navigation }) => {
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
-          {/* Decorative Elements */}
           <View style={styles.decorativeCircle1} />
           <View style={styles.decorativeCircle2} />
-          
-          {/* Top Bar */}
+
           <View style={styles.topBar}>
             <View style={styles.headerLeft}>
-              <TouchableOpacity 
-                onPress={() => navigation.goBack()} 
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
                 style={styles.backButton}
               >
                 <Ionicons name="arrow-back" size={24} color={colors.white} />
               </TouchableOpacity>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.greetingText}>Live Data Feed | සජීවී දත්ත</Text>
-             
-                <Text style={styles.brandText}>Sensor Monitoring | සංවේදක නිරීක්ෂණය</Text>
+                <Text style={styles.brandText}>
+                  Sensor Monitoring | සංවේදක නිරීක්ෂණය
+                </Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.profileButton}>
-              <LinearGradient
-                colors={["rgba(255,255,255,0.3)", "rgba(255,255,255,0.1)"]}
-                style={styles.profileGradient}
-              >
-                <Ionicons name="hardware-chip" size={22} color={colors.white} />
-              </LinearGradient>
-            </TouchableOpacity>
           </View>
 
-          {/* Summary Stats */}
           <View style={styles.summaryContainer}>
             <View style={styles.summaryCard}>
-              <View style={[styles.summaryIconBg, { backgroundColor: "rgba(0, 184, 148, 0.2)" }]}>
-                <Ionicons name="radio" size={18} color="#00B894" />
+              <View style={[styles.summaryIconBg, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                <Ionicons name="radio" size={18} color="#FFF" />
               </View>
               <Text style={styles.summaryValue}>{activeSensors}</Text>
               <Text style={styles.summaryLabel}>Active | සක්‍රිය</Text>
             </View>
             <View style={styles.summaryCard}>
-              <View style={[styles.summaryIconBg, { backgroundColor: "rgba(116, 185, 255, 0.2)" }]}>
-                <Ionicons name="checkmark-done" size={18} color="#74B9FF" />
+              <View style={[styles.summaryIconBg, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                <Ionicons name="checkmark-done" size={18} color="#FFF" />
               </View>
               <Text style={styles.summaryValue}>{optimalSensors}</Text>
               <Text style={styles.summaryLabel}>Optimal | ප්‍රශස්ත</Text>
             </View>
             <View style={styles.summaryCard}>
-              <View style={[styles.summaryIconBg, { backgroundColor: "rgba(255, 255, 255, 0.2)" }]}>
-                <Ionicons name="pulse" size={18} color="#FFF" />
+              <View style={[styles.summaryIconBg, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                <Ionicons
+                  name={loading ? "pulse" : isOnline ? "wifi" : "cloud-offline-outline"}
+                  size={18}
+                  color="#FFF"
+                />
               </View>
-              <Text style={styles.summaryValue}>Live | සජීවී</Text>
-              <Text style={styles.summaryLabel}>Status | තත්ත්වය</Text>
+              <Text style={styles.summaryValue}>
+                {loading ? "..." : isOnline ? "Online" : "Offline"}
+              </Text>
+              <Text style={styles.summaryLabel}>
+                Status | තත්ත්වය
+              </Text>
             </View>
           </View>
         </LinearGradient>
@@ -216,89 +411,112 @@ const SensorScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Section Header */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <View style={styles.liveDot} />
+            <View style={[styles.liveDot, { backgroundColor: loading ? "#FDCB6E" : "#00B894" }]} />
             <Text style={styles.sectionTitle}>All Sensors | සියලුම සංවේදක</Text>
           </View>
-          <TouchableOpacity style={styles.refreshButton}>
-            <Ionicons name="refresh" size={20} color={colors.primary} />
-          </TouchableOpacity>
+          {loading && <ActivityIndicator size="small" color={colors.primary} />}
         </View>
 
-        <View style={styles.grid}>
-          {sensorData.map((item) => (
-            <TouchableOpacity key={item.id} activeOpacity={0.85}>
-              <View style={styles.card}>
-                {/* Gradient Header */}
-                <LinearGradient
-                  colors={item.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.cardHeader}
-                >
-                  <View style={styles.cardHeaderContent}>
-                    <View style={styles.iconContainerWhite}>
-                      <Ionicons name={item.icon} size={24} color={item.gradient[0]} />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>
+              Connecting to Firebase... | Firebase වෙත සම්බන්ධ වෙමින්...
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.grid}>
+            {sensorData.map((item) => (
+              <TouchableOpacity key={item.id} activeOpacity={0.85}>
+                <View style={styles.card}>
+                  <LinearGradient
+                    colors={item.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.cardHeader}
+                  >
+                    <View style={styles.cardHeaderContent}>
+                      <View style={styles.iconContainerWhite}>
+                        <Ionicons name={item.icon} size={24} color={item.gradient[0]} />
+                      </View>
+                      <View style={[styles.trendBadge, { backgroundColor: "rgba(255,255,255,0.25)" }]}>
+                        <Ionicons
+                          name={getTrendIcon(item.trend)}
+                          size={14}
+                          color="#FFF"
+                        />
+                      </View>
                     </View>
-                    <View style={[styles.trendBadge, { backgroundColor: "rgba(255,255,255,0.25)" }]}>
-                      <Ionicons 
-                        name={getTrendIcon(item.trend)} 
-                        size={14} 
-                        color="#FFF" 
-                      />
+                  </LinearGradient>
+
+                  <View style={styles.cardBody}>
+                    <Text style={styles.title}>{item.title}</Text>
+                    <View style={styles.valueRow}>
+                      <Text style={styles.value}>{item.value}</Text>
+                      <Text style={styles.unit}>{item.unit}</Text>
                     </View>
-                  </View>
-                </LinearGradient>
 
-                {/* Card Body */}
-                <View style={styles.cardBody}>
-                  <Text style={styles.title}>{item.title}</Text>
-                  <View style={styles.valueRow}>
-                    <Text style={styles.value}>{item.value}</Text>
-                    <Text style={styles.unit}>{item.unit}</Text>
-                  </View>
-
-                  <View style={styles.cardFooter}>
-                    <View style={[styles.statusContainer, { backgroundColor: `${item.statusColor}15` }]}>
-                      <View style={[styles.statusDot, { backgroundColor: item.statusColor }]} />
-                      <Text style={[styles.status, { color: item.statusColor }]}>
-                        {item.status}
-                      </Text>
+                    <View style={styles.cardFooter}>
+                      <View style={[styles.statusContainer, { backgroundColor: `${item.statusColor}15` }]}>
+                        <View style={[styles.statusDot, { backgroundColor: item.statusColor }]} />
+                        <Text style={[styles.status, { color: item.statusColor }]}>
+                          {item.status}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
 
-                  <Text style={styles.lastReading}>
-                    <Ionicons name="time-outline" size={10} color="#999" /> {item.lastReading}
-                  </Text>
+                    <Text style={styles.lastReading}>
+                      <Ionicons name="time-outline" size={10} color="#999" /> {item.lastReading}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Connection Status Card */}
         <LinearGradient
-          colors={["#E8F5E9", "#C8E6C9"]}
+          colors={isOnline ? ["#E8F5E9", "#C8E6C9"] : ["#FFEBEE", "#FFCDD2"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.connectionCard}
         >
-          <View style={styles.connectionIcon}>
-            <Ionicons name="wifi" size={28} color="#4CAF50" />
+          <View style={[
+            styles.connectionIcon,
+            { backgroundColor: isOnline ? "rgba(76, 175, 80, 0.15)" : "rgba(244, 67, 54, 0.15)" },
+          ]}>
+            <Ionicons
+              name={isOnline ? "wifi" : "wifi-outline"}
+              size={28}
+              color={isOnline ? "#4CAF50" : "#F44336"}
+            />
           </View>
           <View style={styles.connectionContent}>
-            <Text style={styles.connectionTitle}>All Sensors Connected | සියලුම සංවේදක සම්බන්ධිතයි</Text>
-            <Text style={styles.connectionSubtitle}>
-              Data syncing every 30 seconds • Last sync: just now | සෑම තත්පර 30කට දත්ත සමමුහුර්ත වේ
+            <Text style={[styles.connectionTitle, { color: isOnline ? "#2E7D32" : "#C62828" }]}>
+              {isOnline
+                ? "All Sensors Connected | සියලුම සංවේදක සම්බන්ධිතයි"
+                : "Device Offline | උපාංගය නොබැඳිව"}
+            </Text>
+            <Text style={[styles.connectionSubtitle, { color: isOnline ? "#4CAF50" : "#F44336" }]}>
+              {lastSyncTs
+                ? `Last sync: ${formatTimestamp(lastSyncTs)} • ${formatTimeAgoMs(lastSyncTs)}`
+                : "Connecting... | සම්බන්ධ වෙමින්..."}
             </Text>
           </View>
           <View style={styles.signalBars}>
-            <View style={[styles.signalBar, styles.signalBarActive]} />
-            <View style={[styles.signalBar, styles.signalBarActive]} />
-            <View style={[styles.signalBar, styles.signalBarActive]} />
-            <View style={[styles.signalBar, styles.signalBarActive]} />
+            {[8, 12, 16, 22].map((h, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.signalBar,
+                  { height: h },
+                  isOnline ? styles.signalBarOnline : styles.signalBarOffline,
+                ]}
+              />
+            ))}
           </View>
         </LinearGradient>
 
@@ -355,6 +573,8 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
+    marginRight: 10,
   },
   backButton: {
     width: 42,
@@ -440,7 +660,6 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#00B894",
     marginRight: 10,
   },
   sectionTitle: {
@@ -449,13 +668,16 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
     letterSpacing: 0.3,
   },
-  refreshButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(76, 175, 80, 0.1)",
-    justifyContent: "center",
+  loadingContainer: {
     alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
   },
   grid: {
     flexDirection: "row",
@@ -570,7 +792,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: "rgba(76, 175, 80, 0.15)",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,
@@ -581,12 +802,10 @@ const styles = StyleSheet.create({
   connectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#2E7D32",
     marginBottom: 4,
   },
   connectionSubtitle: {
     fontSize: 12,
-    color: "#4CAF50",
     lineHeight: 18,
   },
   signalBars: {
@@ -596,19 +815,18 @@ const styles = StyleSheet.create({
   },
   signalBar: {
     width: 4,
-    backgroundColor: "rgba(76, 175, 80, 0.3)",
     borderRadius: 2,
     marginLeft: 3,
   },
-  signalBarActive: {
+  signalBarOnline: {
     backgroundColor: "#4CAF50",
+  },
+  signalBarOffline: {
+    backgroundColor: "#F44336",
   },
   bottomSpacing: {
     height: 100,
   },
 });
-
-// Signal bar heights
-const signalBarHeights = [8, 12, 16, 22];
 
 export default SensorScreen;
