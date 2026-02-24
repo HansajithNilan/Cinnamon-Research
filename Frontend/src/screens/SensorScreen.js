@@ -15,7 +15,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../styles/colors";
 import {
-  THRESHOLDS,
   getTempStatus,
   getHumidityStatus,
   getCO2Status,
@@ -170,16 +169,18 @@ const SensorScreen = ({ navigation }) => {
       markLoaded(entry);
     });
 
-    // Motion — stored under motion_data, same date-partitioned structure
-    const motionRef = ref(warehouseDb, `${basePath}/motion_data`);
+    // Motion — stored under readings/{timestamp} (flat, not date-partitioned)
+    const motionRef = ref(warehouseDb, `${basePath}/readings`);
     const motionListener = onValue(motionRef, (snap) => {
       const data = snap.val();
       if (!data) { setMotion(null); return; }
-      const dates = Object.keys(data).sort();
-      const latestDate = dates[dates.length - 1];
-      const timestamps = Object.keys(data[latestDate]).sort((a, b) => Number(a) - Number(b));
-      const latestTs = timestamps[timestamps.length - 1];
-      setMotion(data[latestDate][latestTs]);
+      const keys = Object.keys(data).sort((a, b) => Number(a) - Number(b));
+      const latest = data[keys[keys.length - 1]];
+      setMotion({
+        motion_detected: latest.motion_detected,
+        motion_confidence: latest.motion_confidence,
+        date_time: latest.date ? `${latest.date} ${latest.time}` : null,
+      });
     });
 
     unsubscribers.current = [
@@ -253,8 +254,8 @@ const SensorScreen = ({ navigation }) => {
       id: 4,
       icon: "shield-checkmark-outline",
       title: "Pest Control | පළිබෝධ පාලනය",
-      value: motionDetected === null ? "--" : motionDetected ? "Active | සක්‍රිය" : "Low | අඩු",
-      unit: motionConfidence !== null ? ` (${motionConfidence}%)` : "",
+      value: motionDetected === null ? "--" : motionDetected ? "Detected | හදුනාගත්" : "Clear | පැහැදිලි",
+      unit: "",
       status: motionStatus.label,
       statusColor: motionStatus.color,
       gradient: ["#00B894", "#00A085"],
