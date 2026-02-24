@@ -75,7 +75,20 @@ const DashboardContent = () => {
       subscribeLatest(`${base}/humidity_data`,    setHumidity),
       subscribeLatest(`${base}/air_quality_data`, setAirQuality),
       subscribeLatest(`${base}/light_data`,       setLight),
-      subscribeLatest(`${base}/motion_data`,      setMotion),
+      (() => {
+        const motionRef = ref(warehouseDb, `${base}/readings`);
+        const motionListener = onValue(motionRef, (snap) => {
+          const data = snap.val();
+          if (!data) { setMotion(null); return; }
+          const keys = Object.keys(data).sort((a, b) => Number(a) - Number(b));
+          const latest = data[keys[keys.length - 1]];
+          setMotion({
+            motion_detected: latest.motion_detected,
+            date_time: latest.date ? `${latest.date} ${latest.time}` : null,
+          });
+        }, () => setMotion(null));
+        return () => off(motionRef, "value", motionListener);
+      })(),
     ];
     return () => unsubs.forEach((fn) => fn && fn());
   }, []);
@@ -153,7 +166,7 @@ const DashboardContent = () => {
       icon: "shield-checkmark-outline",
       title: "Pest Control | පළිබෝධ පාලනය",
       description: "Maintains purity and prevents contamination | පිරිසිදුකම පවත්වා දූෂණය වළක්වයි",
-      value: motionDetected === null ? "—" : motionDetected ? "Active | සක්‍රිය" : "Clear | නිදහස්",
+      value: motionDetected === null ? "—" : motionDetected ? "Detected | හදුනාගත්" : "Clear | පැහැදිලි",
       valueColor: motionSt.color,
       bgColor: "rgba(0, 184, 148, 0.12)",
       iconBg: "rgba(0, 184, 148, 0.15)",
