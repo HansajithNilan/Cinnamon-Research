@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -10,28 +10,83 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
+    ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "../styles/colors";
+import { auth, db } from "../config/vacant/firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 const ProfileScreen = () => {
     const navigation = useNavigation();
     const [isEditing, setIsEditing] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-    // Dummy user state
     const [userInfo, setUserInfo] = useState({
-        name: "Cinnamon User",
-        email: "user@cinnamon.lk",
-        phone: "+94 77 123 4567",
-        address: "Colombo, Sri Lanka",
-        bio: "Tea & Cinnamon Planter",
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        bio: "",
     });
 
-    const handleSave = () => {
-        setIsEditing(false);
-        Alert.alert("Success", "Profile updated successfully!");
+    useEffect(() => {
+        fetchUserProfile();
+    }, []);
+
+    const fetchUserProfile = async () => {
+        const user = auth.currentUser;
+        if (user) {
+            try {
+                const docRef = doc(db, "users", user.uid);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setUserInfo({
+                        name: data.fullName || user.displayName || "N/A",
+                        email: data.email || user.email || "N/A",
+                        phone: data.phone || "N/A",
+                        address: data.address || "N/A",
+                        bio: data.bio || "N/A",
+                    });
+                } else {
+                    // Fallback to Auth profile if Firestore doc doesn't exist
+                    setUserInfo(prev => ({
+                        ...prev,
+                        name: user.displayName || "N/A",
+                        email: user.email || "N/A",
+                    }));
+                }
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+                Alert.alert("Error", "Could not load profile data.");
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    const handleSave = async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        try {
+            const userRef = doc(db, "users", user.uid);
+            await updateDoc(userRef, {
+                fullName: userInfo.name,
+                phone: userInfo.phone,
+                address: userInfo.address,
+                bio: userInfo.bio,
+            });
+            setIsEditing(false);
+            Alert.alert("Success", "Profile updated successfully!");
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            Alert.alert("Error", "Failed to update profile.");
+        }
     };
 
     const renderInput = (label, value, key, keyboardType = "default") => (
@@ -51,6 +106,36 @@ const ProfileScreen = () => {
             )}
         </View>
     );
+
+    if (loading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+        );
+    }
+
+    const handleLogout = async () => {
+        Alert.alert(
+            "Logout",
+            "Are you sure you want to log out?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Logout",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await auth.signOut();
+                            navigation.replace("Login");
+                        } catch (error) {
+                            Alert.alert("Error", "Failed to logout");
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     return (
         <KeyboardAvoidingView
@@ -123,6 +208,15 @@ const ProfileScreen = () => {
                         <Text style={styles.statLabel}>Member</Text>
                     </View>
                 </View>
+
+                {/* Logout Button */}
+                <TouchableOpacity
+                    style={styles.logoutButton}
+                    onPress={handleLogout}
+                >
+                    <Ionicons name="log-out-outline" size={24} color={colors.red || "#E53935"} />
+                    <Text style={styles.logoutText}>Logout</Text>
+                </TouchableOpacity>
 
             </ScrollView>
         </KeyboardAvoidingView>
@@ -286,6 +380,27 @@ const styles = StyleSheet.create({
         width: 1,
         height: '80%',
         backgroundColor: colors.border,
+    },
+    logoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.white,
+        marginHorizontal: 20,
+        marginTop: 20,
+        padding: 15,
+        borderRadius: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+        gap: 10,
+    },
+    logoutText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: colors.red || "#E53935",
     }
 });
 

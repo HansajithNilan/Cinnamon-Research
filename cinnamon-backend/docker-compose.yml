@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  cinnamon-backend:
+    build: .
+    container_name: cinnamon-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/code
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
+
+# Optional: define a network if you want to connect it with a frontend later
+networks:
+  cinnamon-network:
+    driver: bridge

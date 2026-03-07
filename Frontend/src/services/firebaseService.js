@@ -1,4 +1,4 @@
-import { database } from '../config/firebase';
+import { database } from '../config/soil/firebase';
 import { ref, get, onValue } from 'firebase/database';
 
 /**

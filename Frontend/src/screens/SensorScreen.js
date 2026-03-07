@@ -22,7 +22,7 @@ import {
   getLightStatus,
   getMotionStatus,
   getAirQualityStatus,
-} from "../config/warehouseThresholds";
+} from "../config/soil/warehouseThresholds";
 import { initializeApp, getApps } from "firebase/app";
 import { getDatabase, ref, onValue, off } from "firebase/database";
 

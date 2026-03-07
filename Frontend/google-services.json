@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "899171933554",
+    "project_id": "cinnamon-app-e8652",
+    "storage_bucket": "cinnamon-app-e8652.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:899171933554:android:07c980fd95401737ce11eb",
+        "android_client_info": {
+          "package_name": "com.cinnamon.research"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB91FKjjd5jzU2xU5ZG8CJkFBQk_3uuVYM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

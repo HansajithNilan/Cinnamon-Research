@@ -11,11 +11,14 @@ import { Ionicons } from "@expo/vector-icons";
 import Svg, { Circle } from "react-native-svg";
 
 const AnalysisScreen = ({ navigation, route }) => {
+  const { imageUri, analysisData } = route.params || {};
+
   const [progress, setProgress] = useState(0);
   const [animatedProgress] = useState(new Animated.Value(0));
   const [analysisStage, setAnalysisStage] = useState(
     "Scanning leaf structure..."
   );
+  
   const [parameters, setParameters] = useState({
     currentInfection: "Calculating...",
     prediction1Day: "Calculating...",
@@ -34,13 +37,16 @@ const AnalysisScreen = ({ navigation, route }) => {
       });
     }, 120);
 
+    return () => clearInterval(progressInterval);
+  }, []);
+
+  useEffect(() => {
     Animated.timing(animatedProgress, {
       toValue: progress,
       duration: 120,
       useNativeDriver: false,
     }).start();
 
-    // Update analysis stages
     if (progress >= 15 && progress < 40) {
       setAnalysisStage("Detecting fungal patterns...");
     } else if (progress >= 40 && progress < 65) {
@@ -51,50 +57,22 @@ const AnalysisScreen = ({ navigation, route }) => {
       setAnalysisStage("Finalizing predictions...");
     }
 
-    if (progress >= 25 && parameters.currentInfection === "Calculating...") {
-      setTimeout(() => {
-        setParameters((prev) => ({
-          ...prev,
-          currentInfection: "12%",
-        }));
-      }, 400);
+    if (analysisData) {
+      setParameters((prev) => ({
+        ...prev,
+        currentInfection: progress >= 25 ? (analysisData.severity !== undefined ? `${analysisData.severity}%` : "0%") : prev.currentInfection,
+        prediction1Day: progress >= 50 ? (analysisData.forecast?.day_1 !== undefined ? `${analysisData.forecast.day_1}%` : "0%") : prev.prediction1Day,
+        prediction3Days: progress >= 70 ? (analysisData.forecast?.day_3 !== undefined ? `${analysisData.forecast.day_3}%` : "0%") : prev.prediction3Days,
+        prediction7Days: progress >= 90 ? (analysisData.forecast?.day_7 !== undefined ? `${analysisData.forecast.day_7}%` : "0%") : prev.prediction7Days,
+      }));
     }
 
-    if (progress >= 50 && parameters.prediction1Day === "Calculating...") {
-      setTimeout(() => {
-        setParameters((prev) => ({
-          ...prev,
-          prediction1Day: "15%",
-        }));
-      }, 400);
-    }
-
-    if (progress >= 70 && parameters.prediction3Days === "Calculating...") {
-      setTimeout(() => {
-        setParameters((prev) => ({
-          ...prev,
-          prediction3Days: "28%",
-        }));
-      }, 400);
-    }
-
-    if (progress >= 90 && parameters.prediction7Days === "Calculating...") {
-      setTimeout(() => {
-        setParameters((prev) => ({
-          ...prev,
-          prediction7Days: "45%",
-        }));
-      }, 400);
-    }
-
-    return () => clearInterval(progressInterval);
-  }, [progress]);
+  }, [progress, analysisData, animatedProgress]);
 
   const handleViewResults = () => {
     navigation.navigate("Details", {
-      imageUri: route.params?.imageUri,
-      predictions: parameters,
-      progress: progress,
+      imageUri: imageUri,
+      analysisData: analysisData,
     });
   };
 
@@ -103,13 +81,12 @@ const AnalysisScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Analyzing Seedling</Text>
         <View style={styles.placeholder} />
@@ -119,11 +96,9 @@ const AnalysisScreen = ({ navigation, route }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 130 }}
       >
-        {/* Progress Circle */}
         <View style={styles.progressSection}>
           <View style={styles.circleContainer}>
             <Svg width="240" height="240" style={styles.svg}>
-              {/* Background Circle */}
               <Circle
                 cx="120"
                 cy="120"
@@ -132,7 +107,6 @@ const AnalysisScreen = ({ navigation, route }) => {
                 strokeWidth="18"
                 fill="none"
               />
-              {/* Progress Circle */}
               <Circle
                 cx="120"
                 cy="120"
@@ -161,11 +135,9 @@ const AnalysisScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Prediction Parameters */}
         <View style={styles.predictionsSection}>
           <Text style={styles.sectionTitle}>Infection Spread Predictions</Text>
 
-          {/* Current Infection */}
           <View style={styles.predictionCard}>
             <View style={styles.predictionHeader}>
               <View style={styles.iconBadge}>
@@ -186,7 +158,6 @@ const AnalysisScreen = ({ navigation, route }) => {
 
           <View style={styles.divider} />
 
-          {/* 1 Day Prediction */}
           <View style={styles.predictionCard}>
             <View style={styles.predictionHeader}>
               <View style={styles.iconBadge}>
@@ -194,20 +165,26 @@ const AnalysisScreen = ({ navigation, route }) => {
               </View>
               <Text style={styles.predictionLabel}>1 Day Prediction</Text>
             </View>
-            <Text
-              style={[
-                styles.predictionValue,
-                parameters.prediction1Day !== "Calculating..." &&
-                styles.predictionValueCalculated,
-              ]}
-            >
-              {parameters.prediction1Day}
-            </Text>
+            <View style={styles.predictionValueContainer}>
+              <Text
+                style={[
+                  styles.predictionValue,
+                  parameters.prediction1Day !== "Calculating..." &&
+                  styles.predictionValueCalculated,
+                ]}
+              >
+                {parameters.prediction1Day}
+              </Text>
+              {parameters.prediction1Day !== "Calculating..." && (
+                <View style={[styles.riskBadge, styles.riskBadgeLow]}>
+                  <Text style={styles.riskBadgeTextLow}>Low Risk</Text>
+                </View>
+              )}
+            </View>
           </View>
 
           <View style={styles.divider} />
 
-          {/* 3 Days Prediction */}
           <View style={styles.predictionCard}>
             <View style={styles.predictionHeader}>
               <View style={[styles.iconBadge, styles.iconBadgeWarning]}>
@@ -239,7 +216,6 @@ const AnalysisScreen = ({ navigation, route }) => {
 
           <View style={styles.divider} />
 
-          {/* 7 Days Prediction */}
           <View style={styles.predictionCard}>
             <View style={styles.predictionHeader}>
               <View style={[styles.iconBadge, styles.iconBadgeDanger]}>
@@ -266,7 +242,6 @@ const AnalysisScreen = ({ navigation, route }) => {
           </View>
         </View>
       </ScrollView>
-      {/* View Results Button */}
       <View style={styles.bottomSection}>
         <TouchableOpacity
           style={[
@@ -447,6 +422,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
   },
+  riskBadgeLow: {
+    backgroundColor: "#D1FAE5",
+  },
   riskBadgeDanger: {
     backgroundColor: "#FEE2E2",
   },
@@ -454,6 +432,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     color: "#92400E",
+    textTransform: "uppercase",
+  },
+  riskBadgeTextLow: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#065F46",
     textTransform: "uppercase",
   },
   divider: {

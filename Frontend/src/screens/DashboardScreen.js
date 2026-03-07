@@ -23,7 +23,7 @@ import {
   getLightStatus,
   getMotionStatus,
   getAirQualityStatus,
-} from "../config/warehouseThresholds";
+} from "../config/soil/warehouseThresholds";
 
 // Import screens
 import SensorScreen from "./SensorScreen";
@@ -63,18 +63,18 @@ const DashboardContent = () => {
 
   // ── Live sensor state ──────────────────────────────────────────────────────
   const [temperature, setTemperature] = useState(null);
-  const [humidity, setHumidity]       = useState(null);
-  const [airQuality, setAirQuality]   = useState(null);
-  const [light, setLight]             = useState(null);
-  const [motion, setMotion]           = useState(null);
+  const [humidity, setHumidity] = useState(null);
+  const [airQuality, setAirQuality] = useState(null);
+  const [light, setLight] = useState(null);
+  const [motion, setMotion] = useState(null);
 
   useEffect(() => {
     const base = `devices/${DEVICE_ID}`;
     const unsubs = [
       subscribeLatest(`${base}/temperature_data`, setTemperature),
-      subscribeLatest(`${base}/humidity_data`,    setHumidity),
+      subscribeLatest(`${base}/humidity_data`, setHumidity),
       subscribeLatest(`${base}/air_quality_data`, setAirQuality),
-      subscribeLatest(`${base}/light_data`,       setLight),
+      subscribeLatest(`${base}/light_data`, setLight),
       (() => {
         const motionRef = ref(warehouseDb, `${base}/readings`);
         const motionListener = onValue(motionRef, (snap) => {
@@ -94,23 +94,23 @@ const DashboardContent = () => {
   }, []);
 
   // ── Derived live values ────────────────────────────────────────────────────
-  const tempVal    = temperature?.value ?? null;
-  const humidVal   = humidity?.value    ?? null;
-  const co2Val     = airQuality?.co2    ?? null;
-  const vocVal     = airQuality?.voc    ?? null;
-  const luxVal     = light?.lux         ?? null;
+  const tempVal = temperature?.value ?? null;
+  const humidVal = humidity?.value ?? null;
+  const co2Val = airQuality?.co2 ?? null;
+  const vocVal = airQuality?.voc ?? null;
+  const luxVal = light?.lux ?? null;
   const motionDetected = motion?.motion_detected ?? null;
 
-  const tempSt    = getTempStatus(tempVal);
-  const humidSt   = getHumidityStatus(humidVal);
-  const co2St     = getCO2Status(co2Val);
-  const vocSt     = getVOCStatus(vocVal);
-  const lightSt   = getLightStatus(luxVal);
-  const motionSt  = getMotionStatus(motionDetected);
-  const airSt     = getAirQualityStatus(co2Val);
+  const tempSt = getTempStatus(tempVal);
+  const humidSt = getHumidityStatus(humidVal);
+  const co2St = getCO2Status(co2Val);
+  const vocSt = getVOCStatus(vocVal);
+  const lightSt = getLightStatus(luxVal);
+  const motionSt = getMotionStatus(motionDetected);
+  const airSt = getAirQualityStatus(co2Val);
 
   const allStatuses = [tempSt, humidSt, co2St, vocSt, lightSt, motionSt];
-  const withData    = allStatuses.filter((s) => s.color !== "#999");
+  const withData = allStatuses.filter((s) => s.color !== "#999");
 
   // Alerts = sensors with data that are not in the green/optimal state
   const alertCount = withData.filter((s) => s.color !== "#00B894").length;
@@ -232,7 +232,7 @@ const DashboardContent = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-      
+
       {/* Header Section */}
       <View style={styles.headerWrapper}>
         <LinearGradient
@@ -245,7 +245,7 @@ const DashboardContent = () => {
           <View style={styles.decorativeCircle1} />
           <View style={styles.decorativeCircle2} />
           <View style={styles.decorativeCircle3} />
-          
+
           {/* Top Bar */}
           <View style={styles.topBar}>
             <View style={styles.headerLeft}>
@@ -304,8 +304,8 @@ const DashboardContent = () => {
         </View>
 
         {standards.map((item) => (
-          <TouchableOpacity 
-            key={item.id} 
+          <TouchableOpacity
+            key={item.id}
             style={styles.card}
             activeOpacity={0.85}
           >
@@ -317,7 +317,7 @@ const DashboardContent = () => {
             >
               {/* Accent Line */}
               <View style={[styles.cardAccent, { backgroundColor: item.valueColor }]} />
-              
+
               <View style={styles.cardInner}>
                 <LinearGradient
                   colors={[item.valueColor, `${item.valueColor}CC`]}
@@ -365,7 +365,7 @@ const DashboardContent = () => {
             {/* Decorative Pattern */}
             <View style={styles.infoDecor1} />
             <View style={styles.infoDecor2} />
-            
+
             <View style={styles.infoMainContent}>
               <LinearGradient
                 colors={["#4CAF50", "#2E7D32"]}
@@ -385,7 +385,7 @@ const DashboardContent = () => {
                 </Text>
               </View>
             </View>
-            
+
             {/* Progress Indicator */}
             <View style={styles.qualityProgress}>
               <View style={styles.qualityProgressBar}>

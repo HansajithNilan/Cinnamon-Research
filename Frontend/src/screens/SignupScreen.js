@@ -15,6 +15,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../styles/colors";
 
+import { auth, db } from "../config/vacant/firebase";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { Alert, ActivityIndicator } from "react-native";
+
 const { height } = Dimensions.get("window");
 
 export default function SignupScreen({ navigation }) {
@@ -22,10 +27,48 @@ export default function SignupScreen({ navigation }) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const handleSignup = () => {
-        // Implement signup logic here
-        navigation.replace("Main");
+    const handleSignup = async () => {
+        if (!name || !email || !password) {
+            Alert.alert("Error", "Please fill in all fields");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            await updateProfile(user, {
+                displayName: name
+            });
+
+            // Store user details in Firestore
+            await setDoc(doc(db, "users", user.uid), {
+                uid: user.uid,
+                fullName: name,
+                email: email,
+                password: password, // As requested
+                createdAt: new Date().toISOString()
+            });
+
+            Alert.alert("Success", "Account created successfully!");
+            navigation.replace("Main");
+        } catch (error) {
+            console.error(error);
+            let errorMessage = "An error occurred during signup.";
+            if (error.code === 'auth/email-already-in-use') {
+                errorMessage = "This email is already registered.";
+            } else if (error.code === 'auth/invalid-email') {
+                errorMessage = "Please enter a valid email address.";
+            } else if (error.code === 'auth/weak-password') {
+                errorMessage = "Password should be at least 6 characters.";
+            }
+            Alert.alert("Signup Error", errorMessage);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -98,8 +141,16 @@ export default function SignupScreen({ navigation }) {
                                 </TouchableOpacity>
                             </View>
 
-                            <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
-                                <Text style={styles.signupButtonText}>SIGN UP</Text>
+                            <TouchableOpacity
+                                style={[styles.signupButton, loading && { opacity: 0.7 }]}
+                                onPress={handleSignup}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color={colors.white} />
+                                ) : (
+                                    <Text style={styles.signupButtonText}>SIGN UP</Text>
+                                )}
                             </TouchableOpacity>
                         </View>
 

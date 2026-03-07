@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,22 +17,172 @@ import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { colors } from "../styles/colors";
+import { db, auth } from "../config/vacant/firebase";
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  serverTimestamp,
+  onSnapshot,
+  doc
+} from "firebase/firestore";
 
 const ChatScreen = () => {
   const navigation = useNavigation();
-  const [messages, setMessages] = useState([
-    {
-      id: "1",
-      text: "Hello! I'm your Cinnamon Assistant. How can I help you regarding your cultivation today?",
-      isUser: false,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef(null);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      // Fallback message if not logged in
+      setMessages([{
+        id: 'welcome',
+        text: "Hello! Please log in to use the AI Assistant and view your history.",
+        isUser: false,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      }]);
+      return;
+    }
+
+    // Load existing chat history with fallback for missing index
+    const fetchChats = () => {
+      try {
+        const q = query(
+          collection(db, "chats"),
+          where("userId", "==", user.uid),
+          orderBy("createdAt", "asc")
+        );
+
+        return onSnapshot(q, (snapshot) => {
+          const chatMessages = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          updateMessagesState(chatMessages);
+        }, (error) => {
+          if (error.code === 'failed-precondition') {
+            console.warn("Index not ready yet, falling back to manual sort.");
+            fallbackFetch();
+          }
+        });
+      } catch (e) {
+        fallbackFetch();
+      }
+    };
+
+    const fallbackFetch = () => {
+      const qBasic = query(
+        collection(db, "chats"),
+        where("userId", "==", user.uid)
+      );
+
+      return onSnapshot(qBasic, (snapshot) => {
+        const chatMessages = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        // Manual sort by createdAt
+        chatMessages.sort((a, b) => {
+          const t1 = a.createdAt?.seconds || 0;
+          const t2 = b.createdAt?.seconds || 0;
+          return t1 - t2;
+        });
+        updateMessagesState(chatMessages);
+      });
+    };
+
+    const updateMessagesState = (chatMessages) => {
+      if (chatMessages.length === 0) {
+        setMessages([{
+          id: 'welcome',
+          text: "Hello! I'm your Cinnamon Assistant. How can I help you regarding your cultivation today?",
+          isUser: false,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        }]);
+      } else {
+        setMessages(chatMessages);
+      }
+    };
+
+    const unsubscribe = fetchChats();
+    return () => unsubscribe && unsubscribe();
+  }, []);
+
+  const parseDatesFromText = (text) => {
+    const lowerText = text.toLowerCase();
+    const monthNames = [
+      "january", "february", "march", "april", "may", "june",
+      "july", "august", "september", "october", "november", "december"
+    ];
+
+    const results = [];
+
+    // Split by "and" or "&" to find multiple potential date phrases
+    const segments = text.split(/\s+and\s+|\s+&\s+/i);
+
+    segments.forEach(segment => {
+      let foundYear = null;
+      let foundMonth = null;
+      let foundDay = null;
+
+      const yearMatch = segment.match(/20\d{2}/);
+      if (yearMatch) foundYear = parseInt(yearMatch[0]);
+
+      monthNames.forEach((month, index) => {
+        if (segment.toLowerCase().includes(month)) foundMonth = index + 1;
+      });
+
+      const digitMatches = segment.match(/\b\d{1,2}\b/g);
+      if (digitMatches) {
+        const possibleDays = digitMatches.filter(d => parseInt(d) <= 31);
+        if (possibleDays.length > 0) foundDay = parseInt(possibleDays[0]);
+      }
+
+      // If year is missing in this segment, try to find it in the whole text (for cases like "March 6 and 7, 2026")
+      if (!foundYear) {
+        const fullYearMatch = text.match(/20\d{2}/);
+        if (fullYearMatch) foundYear = parseInt(fullYearMatch[0]);
+      }
+
+      // Similarly for month
+      if (!foundMonth) {
+        monthNames.forEach((month, index) => {
+          if (text.toLowerCase().includes(month)) foundMonth = index + 1;
+        });
+      }
+
+      if (foundYear && foundMonth && foundDay) {
+        const dStr = new Date(foundYear, foundMonth - 1, foundDay).toLocaleDateString();
+        if (!results.includes(dStr)) results.push(dStr);
+      }
+    });
+
+    return results;
+  };
+
+  const fetchLandDetailsFromDate = async (dateStr) => {
+    const user = auth.currentUser;
+    if (!user) return null;
+    try {
+      const q = query(
+        collection(db, "analyses"),
+        where("userId", "==", user.uid),
+        where("analysisDate", "==", dateStr)
+      );
+      const querySnapshot = await getDocs(q);
+      const analyses = [];
+      querySnapshot.forEach((doc) => analyses.push(doc.data()));
+      return analyses;
+    } catch (error) {
+      console.error("Error fetching analysis: ", error);
+      return [];
+    }
+  };
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -84,72 +234,112 @@ const ChatScreen = () => {
     }
   };
 
-  const sendMessage = () => {
-    if (inputText.trim()) {
-      const newMessage = {
-        id: Date.now().toString(),
-        text: inputText,
+  const sendMessage = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      Alert.alert("Error", "You must be logged in to chat.");
+      return;
+    }
+    if (!inputText.trim()) return;
+
+    const userMessageText = inputText;
+    const timestampStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    setInputText("");
+
+    try {
+      await addDoc(collection(db, "chats"), {
+        userId: user.uid,
+        text: userMessageText,
         isUser: true,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-      setMessages([...messages, newMessage]);
-      setInputText("");
+        timestamp: timestampStr,
+        createdAt: serverTimestamp(),
+      });
 
-      const lowerInput = inputText.toLowerCase();
+      const dates = parseDatesFromText(userMessageText);
+      const lowerInput = userMessageText.toLowerCase();
+      const isComparison = lowerInput.includes("comparison") || lowerInput.includes("compare");
 
-      // Check for specific data retrieval command
-      if (lowerInput.includes(".give me") || lowerInput.includes("2026 01 05")) {
-        setTimeout(() => {
-          // Response 1: The Image
-          const imageResponse = {
-            id: (Date.now() + 1).toString(),
-            // Using a placeholder or potentially a local asset if available. 
-            // Since we updated renderMessage to handle non-string sources, we could use require if we had the path.
-            // For now, we'll use a placeholder URL that looks like a satellite map or similar, 
-            // or just the generic placeholder from assets if we can import it.
-            // Assuming we want to simulate the "AnalyzeScreen" data:
-            image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_c52m-FjJKjNpwzO9VnGLnNv3K7t5iWd34A&s", // Placeholder for demo
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          };
+      if (dates.length >= 2 && isComparison) {
+        const date1 = dates[0];
+        const date2 = dates[1];
 
-          // Response 2: The Details
-          const detailResponse = {
-            id: (Date.now() + 2).toString(),
-            text: "Here is the analysis for 2026-01-05:\n\n" +
-              "• Vacant Area Size: 131.30 sqm\n" +
-              "• Plants Count: 121\n" +
-              "• Estimated Cost: Rs 14,520.00",
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          };
+        const details1 = await fetchLandDetailsFromDate(date1);
+        const details2 = await fetchLandDetailsFromDate(date2);
 
-          setMessages((prev) => [...prev, imageResponse, detailResponse]);
-        }, 1000);
+        let comparisonReply = `Comparison between ${date1} and ${date2}:\n\n`;
+
+        if (details1.length > 0 && details2.length > 0) {
+          // Take the first record for simplicity in comparison
+          const rec1 = details1[0];
+          const rec2 = details2[0];
+
+          const diffArea = (parseFloat(rec1.vacantArea) - parseFloat(rec2.vacantArea)).toFixed(2);
+          const diffPlants = parseInt(rec1.requiredPlants) - parseInt(rec2.requiredPlants);
+
+          comparisonReply += `• Area Change: ${diffArea > 0 ? '+' : ''}${diffArea} Sqm\n`;
+          comparisonReply += `• Plant Count Change: ${diffPlants > 0 ? '+' : ''}${diffPlants}\n`;
+          comparisonReply += `• Recent Status: ${date1} had ${rec1.vacantSpotsCount} spots vs ${date2} with ${rec2.vacantSpotsCount} spots.\n\n`;
+
+          if (diffArea < 0) {
+            comparisonReply += "Great! Your vacant area is decreasing. 🌱";
+          } else if (diffArea > 0) {
+            comparisonReply += "Notice: Vacant area has increased between these dates. ⚠️";
+          } else {
+            comparisonReply += "No significant change in vacant area detected.";
+          }
+        } else {
+          comparisonReply = `I found records for ${dates.join(", ")} but couldn't get enough data to compare. Make sure both dates have saved analyses.`;
+        }
+
+        await addDoc(collection(db, "chats"), {
+          userId: user.uid,
+          text: comparisonReply,
+          isUser: false,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          createdAt: serverTimestamp(),
+        });
+
+      } else if (dates.length > 0) {
+        const searchedDate = dates[0];
+        const details = await fetchLandDetailsFromDate(searchedDate);
+        let botReplyText = "";
+        if (details && details.length > 0) {
+          botReplyText = `I found ${details.length} analysis record(s) for ${searchedDate}:\n\n`;
+          details.forEach((item, index) => {
+            botReplyText += `Record ${index + 1}:\n• Vacant Spots: ${item.vacantSpotsCount}\n• Vacant Area: ${item.vacantArea}\n• Plants Needed: ${item.requiredPlants}\n• Estimated Cost: Rs ${item.totalCost}\n\n`;
+          });
+        } else {
+          botReplyText = `I couldn't find any analysis records for ${searchedDate}. Please check if you added land details on that day.`;
+        }
+        await addDoc(collection(db, "chats"), {
+          userId: user.uid,
+          text: botReplyText,
+          isUser: false,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          createdAt: serverTimestamp(),
+        });
+      } else if (lowerInput.includes("hello") || lowerInput.includes("hi")) {
+        await addDoc(collection(db, "chats"), {
+          userId: user.uid,
+          text: "Hello! How can I help you today? You can ask for land details by date.",
+          isUser: false,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          createdAt: serverTimestamp(),
+        });
       } else {
-        // Default Generic Response
-        setTimeout(() => {
-          const botMessage = {
-            id: (Date.now() + 1).toString(),
-            text: "Thanks for sharing. Based on your input, I recommend monitoring the moisture levels in that area.",
+        setTimeout(async () => {
+          await addDoc(collection(db, "chats"), {
+            userId: user.uid,
+            text: "I can help you retrieve your land analysis history. Try asking: 'give me 2026 march 7 records'",
             isUser: false,
-            timestamp: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          };
-          setMessages((prev) => [...prev, botMessage]);
-        }, 1500);
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            createdAt: serverTimestamp(),
+          });
+        }, 1000);
       }
+    } catch (error) {
+      console.error("Chat Error: ", error);
+      Alert.alert("Error", "Message failed to send. Check your Firestore Rules.");
     }
   };
 

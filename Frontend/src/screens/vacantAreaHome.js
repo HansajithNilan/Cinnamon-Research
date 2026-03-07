@@ -152,6 +152,8 @@ const VacantAreaNavigator = () => {
                         iconName = focused ? "document-text" : "document-text-outline";
                     } else if (route.name === "Chat") {
                         iconName = focused ? "chatbubbles" : "chatbubbles-outline";
+                    } else if (route.name === "History") {
+                        iconName = focused ? "time" : "time-outline";
                     }
 
                     return <Ionicons name={iconName} size={size} color={color} />;
@@ -176,6 +178,7 @@ const VacantAreaNavigator = () => {
         >
             <Tab.Screen name="Home" component={VacantHomeContent} />
             <Tab.Screen name="Analyze" component={AnalyzeScreen} />
+            <Tab.Screen name="History" component={AnalyzeScreen} initialParams={{ showHistory: true }} />
             <Tab.Screen name="Chat" component={ChatScreen} />
         </Tab.Navigator>
     );

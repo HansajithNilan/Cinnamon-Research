@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { colors } from "../styles/colors";
+import { ENDPOINTS } from "../config/vacant/api";
 
 const ImageScreen = ({ navigation }) => {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -62,11 +63,47 @@ const ImageScreen = ({ navigation }) => {
     }
   };
 
-  const handleAnalyze = () => {
-    if (selectedImage) {
-      navigation.navigate("Analysis", { imageUri: selectedImage });
-    } else {
+  const handleAnalyze = async () => {
+    if (!selectedImage) {
       Alert.alert("No Image", "Please select an image first");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+
+      const filename = selectedImage.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename);
+      const imageType = match ? `image/${match[1]}` : `image`;
+
+      formData.append("file", {
+        uri: selectedImage,
+        name: filename,
+        type: imageType,
+      });
+
+      const response = await fetch(ENDPOINTS.ANALYZE_LEAF, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "multipart/form-data",
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.status === "success") {
+        navigation.navigate("Analysis", {
+          imageUri: selectedImage,
+          analysisData: result.data
+        });
+      } else {
+        Alert.alert("Analysis Failed", result.detail || "Could not analyze the image.");
+      }
+    } catch (error) {
+      console.error("API Error:", error);
+      Alert.alert("Connection Error", "Could not connect to the backend server. Check if the backend is running and the IP address is correct.");
     }
   };
 
@@ -76,7 +113,6 @@ const ImageScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header Section */}
       <View style={styles.headerWrapper}>
         <LinearGradient
           colors={[colors.primary, colors.primary]}
@@ -84,7 +120,6 @@ const ImageScreen = ({ navigation }) => {
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
-          {/* Top Bar */}
           <View style={styles.topBar}>
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <TouchableOpacity
@@ -110,7 +145,6 @@ const ImageScreen = ({ navigation }) => {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Title Section */}
         <View style={styles.titleSection}>
           <Text style={styles.title}>Scan Seedling Leaf</Text>
           <Text style={styles.subtitle}>
@@ -119,16 +153,14 @@ const ImageScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        {/* Info Banner */}
         <View style={styles.infoBanner}>
-          <Ionicons name="information-circle" size={20} color="#7A9B5C" />
+          <Ionicons name="information-circle" size={20} color="#10B981" />
           <Text style={styles.infoBannerText}>
             For best results, capture the leaf in good lighting with visible
             spots or discoloration.
           </Text>
         </View>
 
-        {/* Upload Box */}
         <View style={styles.uploadBox}>
           {selectedImage ? (
             <View style={styles.imagePreviewContainer}>
@@ -147,7 +179,7 @@ const ImageScreen = ({ navigation }) => {
           ) : (
             <>
               <View style={styles.cloudIcon}>
-                <Ionicons name="camera-outline" size={60} color="#8B9D6B" />
+                <Ionicons name="camera-outline" size={60} color="#10B981" />
               </View>
               <Text style={styles.uploadTitle}>
                 Capture or Upload Leaf Photo
@@ -178,19 +210,18 @@ const ImageScreen = ({ navigation }) => {
           )}
         </View>
 
-        {/* Tips Section */}
         <View style={styles.tipsSection}>
           <Text style={styles.tipsTitle}>Photography Tips</Text>
           <View style={styles.tipItem}>
-            <Ionicons name="checkmark-circle" size={18} color="#7A9B5C" />
+            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
             <Text style={styles.tipText}>Ensure leaf is clearly visible</Text>
           </View>
           <View style={styles.tipItem}>
-            <Ionicons name="checkmark-circle" size={18} color="#7A9B5C" />
+            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
             <Text style={styles.tipText}>Use natural daylight if possible</Text>
           </View>
           <View style={styles.tipItem}>
-            <Ionicons name="checkmark-circle" size={18} color="#7A9B5C" />
+            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
             <Text style={styles.tipText}>
               Focus on infected or discolored areas
             </Text>
@@ -198,7 +229,6 @@ const ImageScreen = ({ navigation }) => {
         </View>
       </ScrollView>
 
-      {/* Analyze Button */}
       <View style={styles.bottomSection}>
         <TouchableOpacity
           style={[

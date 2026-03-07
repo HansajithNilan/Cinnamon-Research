@@ -4,6 +4,9 @@ import { View, StyleSheet, Animated, Easing, Dimensions, Image } from 'react-nat
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../styles/colors';
 
+import { auth } from "../config/vacant/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+
 const { width } = Dimensions.get('window');
 
 const LoadingScreen = ({ navigation }) => {
@@ -30,14 +33,23 @@ const LoadingScreen = ({ navigation }) => {
 
         pulseAnimation.start();
 
-        // Navigate to Splash screen after 3 seconds
-        const timer = setTimeout(() => {
-            navigation.replace('Splash');
-        }, 3000);
+        // Check Firebase Auth State
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            // Keep the loading screen for at least 1.5 seconds for branding
+            const timer = setTimeout(() => {
+                if (user) {
+                    navigation.replace('Main');
+                } else {
+                    navigation.replace('Splash');
+                }
+            }, 1500);
+
+            return () => clearTimeout(timer);
+        });
 
         return () => {
             pulseAnimation.stop();
-            clearTimeout(timer);
+            unsubscribe();
         };
     }, []);
 

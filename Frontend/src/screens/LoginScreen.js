@@ -12,11 +12,17 @@ import {
     Dimensions,
     Animated,
     ScrollView,
+    Image,
+    Alert,
+    ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../styles/colors";
+
+import { auth } from "../config/vacant/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const { height, width } = Dimensions.get("window");
 
@@ -26,10 +32,32 @@ export default function LoginScreen({ navigation }) {
     const [showPassword, setShowPassword] = useState(false);
     const [emailFocused, setEmailFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = () => {
-        // Implement login logic here
-        navigation.replace("Main"); // Use replace to prevent going back to login
+    const handleLogin = async () => {
+        if (!email || !password) {
+            Alert.alert("Error", "Please enter both email and password");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            navigation.replace("Main");
+        } catch (error) {
+
+            let errorMessage = "An error occurred during login.";
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                errorMessage = "Invalid email or password.";
+            } else if (error.code === 'auth/invalid-email') {
+                errorMessage = "Please enter a valid email address.";
+            } else if (error.code === 'auth/too-many-requests') {
+                errorMessage = "Too many failed attempts. Please try again later.";
+            }
+            Alert.alert("Login Error", errorMessage);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -57,7 +85,7 @@ export default function LoginScreen({ navigation }) {
                             <View style={styles.decorativeCircle2} />
                             <View style={styles.decorativeCircle3} />
                         </LinearGradient>
-                        
+
                         <TouchableOpacity
                             style={styles.backButton}
                             onPress={() => navigation.goBack()}
@@ -69,7 +97,14 @@ export default function LoginScreen({ navigation }) {
                         {/* Logo/Icon Area */}
                         <View style={styles.logoContainer}>
                             <View style={styles.logoCircle}>
-                                <Ionicons name="leaf" size={50} color={colors.white} />
+                                <Image
+                                    source={require("../assets/logo.png")}
+                                    style={{
+                                        width: 50,
+                                        height: 50,
+                                        resizeMode: "contain",
+                                    }}
+                                />
                             </View>
                         </View>
                     </View>
@@ -92,10 +127,10 @@ export default function LoginScreen({ navigation }) {
                                         emailFocused && styles.inputWrapperFocused
                                     ]}>
                                         <View style={styles.iconContainer}>
-                                            <Ionicons 
-                                                name="mail" 
-                                                size={22} 
-                                                color={emailFocused ? colors.primary : colors.textSecondary} 
+                                            <Ionicons
+                                                name="mail"
+                                                size={22}
+                                                color={emailFocused ? colors.primary : colors.textSecondary}
                                             />
                                         </View>
                                         <TextInput
@@ -120,10 +155,10 @@ export default function LoginScreen({ navigation }) {
                                         passwordFocused && styles.inputWrapperFocused
                                     ]}>
                                         <View style={styles.iconContainer}>
-                                            <Ionicons 
-                                                name="lock-closed" 
-                                                size={22} 
-                                                color={passwordFocused ? colors.primary : colors.textSecondary} 
+                                            <Ionicons
+                                                name="lock-closed"
+                                                size={22}
+                                                color={passwordFocused ? colors.primary : colors.textSecondary}
                                             />
                                         </View>
                                         <TextInput
@@ -136,7 +171,7 @@ export default function LoginScreen({ navigation }) {
                                             onBlur={() => setPasswordFocused(false)}
                                             secureTextEntry={!showPassword}
                                         />
-                                        <TouchableOpacity 
+                                        <TouchableOpacity
                                             onPress={() => setShowPassword(!showPassword)}
                                             style={styles.eyeButton}
                                             activeOpacity={0.7}
@@ -158,17 +193,18 @@ export default function LoginScreen({ navigation }) {
                                         </View>
                                         <Text style={styles.rememberMeText}>Remember me</Text>
                                     </TouchableOpacity>
-                                    
+
                                     <TouchableOpacity style={styles.forgotPassword}>
                                         <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                                     </TouchableOpacity>
                                 </View>
 
                                 {/* Enhanced Login Button */}
-                                <TouchableOpacity 
-                                    style={styles.loginButton} 
+                                <TouchableOpacity
+                                    style={[styles.loginButton, loading && { opacity: 0.7 }]}
                                     onPress={handleLogin}
                                     activeOpacity={0.8}
+                                    disabled={loading}
                                 >
                                     <LinearGradient
                                         colors={['#4CAF50', '#2E7D32']}
@@ -176,8 +212,14 @@ export default function LoginScreen({ navigation }) {
                                         end={{ x: 1, y: 0 }}
                                         style={styles.loginButtonGradient}
                                     >
-                                        <Text style={styles.loginButtonText}>Sign In</Text>
-                                        <Ionicons name="arrow-forward" size={20} color={colors.white} />
+                                        {loading ? (
+                                            <ActivityIndicator color={colors.white} />
+                                        ) : (
+                                            <>
+                                                <Text style={styles.loginButtonText}>Sign In</Text>
+                                                <Ionicons name="arrow-forward" size={20} color={colors.white} />
+                                            </>
+                                        )}
                                     </LinearGradient>
                                 </TouchableOpacity>
 
@@ -227,7 +269,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
     },
     headerBackground: {
-        height: height * 0.35,
+        height: height * 0.22,
         position: 'relative',
     },
     gradient: {
