@@ -79,12 +79,12 @@ export default function SplashScreen({ navigation }) {
     const dynamicStyles = StyleSheet.create({
         container: {
             paddingTop: insets.top,
-            paddingBottom: Math.max(insets.bottom, 40),
+            paddingBottom: Math.max(insets.bottom, 10),
             paddingLeft: insets.left,
             paddingRight: insets.right,
         },
         titleText: {
-            fontSize: 29 * scale,
+            fontSize: 36 * scale,
             fontWeight: "900",
             color: colors.white,
             textAlign: "center",
@@ -94,24 +94,24 @@ export default function SplashScreen({ navigation }) {
             textShadowRadius: 10,
         },
         subtitleText: {
-            fontSize: 16 * scale,
+            fontSize: 14 * scale,
             fontWeight: "700",
             color: colors.cinnamonLight,
             textAlign: "center",
-            marginTop: 4 * scale,
-            letterSpacing: 3,
+            marginTop: 2 * scale,
+            letterSpacing: 2,
             textTransform: "uppercase",
         },
         descriptionText: {
-            fontSize: 14 * scale,
-            lineHeight: 22 * scale,
+            fontSize: 13 * scale,
+            lineHeight: 20 * scale,
             color: "rgba(255, 255, 255, 0.8)",
             textAlign: "center",
-            marginTop: 20 * scale,
+            marginTop: 10 * scale,
             paddingHorizontal: 15 * scale,
         },
         buttonText: {
-            fontSize: 18 * scale,
+            fontSize: 16 * scale,
             fontWeight: "800",
             letterSpacing: 0.5,
         }
@@ -126,7 +126,7 @@ export default function SplashScreen({ navigation }) {
                 resizeMode="cover"
             >
                 <LinearGradient
-                    colors={['rgba(5, 20, 10, 0.45)', 'rgba(5, 30, 20, 0.75)', 'rgba(2, 10, 5, 1)']}
+                    colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.95)']}
                     style={styles.gradient}
                 >
                     <ScrollView
@@ -136,6 +136,7 @@ export default function SplashScreen({ navigation }) {
                             dynamicStyles.container
                         ]}
                         showsVerticalScrollIndicator={false}
+                        scrollEnabled={height < 700}
                     >
                         <Animated.View
                             style={[
@@ -158,45 +159,39 @@ export default function SplashScreen({ navigation }) {
                                 }
                             ]}>
                                 <LinearGradient
-                                    colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.02)']}
+                                    colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
                                     style={styles.logoGlass}
                                 >
-                                    <View style={styles.logoInnerCircle}>
-                                        <Image
-                                            source={require("../assets/logo.png")}
-                                            style={[styles.logoImage, { width: 75 * scale, height: 75 * scale }]}
-                                            resizeMode="contain"
-                                        />
-                                    </View>
+                                    <Image
+                                        source={require("../assets/logo.png")}
+                                        style={[styles.logoImage, { width: 70 * scale, height: 70 * scale }]}
+                                        resizeMode="contain"
+                                    />
                                 </LinearGradient>
                             </Animated.View>
 
                             {/* Main Branding */}
                             <View style={styles.brandingSection}>
                                 <Text style={dynamicStyles.titleText}>Smart Cinnamon</Text>
-                                <Text style={dynamicStyles.subtitleText}>Grow With Nature</Text>
-                                <View style={styles.accentContainer}>
-                                    <View style={styles.accentLine} />
-                                    <Ionicons name="leaf" size={18 * scale} color={colors.cinnamonLight} style={styles.accentIcon} />
-                                    <View style={styles.accentLine} />
-                                </View>
+                                <Text style={dynamicStyles.subtitleText}>Elite Agricultural Intelligence</Text>
+                                <View style={styles.accentLine} />
                                 <Text style={dynamicStyles.descriptionText}>
-                                    Empowering your agricultural journey with intelligent soil analysis and smart cultivation insights.
+                                    Pioneering the future of premium cinnamon cultivation through advanced real-time soil analytics.
                                 </Text>
                             </View>
 
                             {/* Interactive Feature Cards */}
                             <View style={[styles.featuresWrapper, { gap: 10 * scale }]}>
                                 <FeatureItem
-                                    icon="leaf-outline"
-                                    title="Eco-friendly Cultivation"
-                                    description="Sustainable practices for better yields"
+                                    icon="analytics-outline"
+                                    title="Precision Monitoring"
+                                    description="Real-time soil health & matrix analysis"
                                     scale={scale}
                                 />
                                 <FeatureItem
-                                    icon="analytics-outline"
-                                    title="Precision Analytics"
-                                    description="Data-driven insights for optimal growth"
+                                    icon="bulb-outline"
+                                    title="Smart Recommendations"
+                                    description="AI-driven insights for optimal yields"
                                     scale={scale}
                                 />
                             </View>
@@ -209,13 +204,13 @@ export default function SplashScreen({ navigation }) {
                                     activeOpacity={0.85}
                                 >
                                     <LinearGradient
-                                        colors={["#00b09b", "#96c93d"]}
+                                        colors={[colors.cinnamon, colors.cinnamonDark]}
                                         start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
+                                        end={{ x: 1, y: 0 }}
                                         style={styles.actionGradient}
                                     >
-                                        <Text style={[styles.primaryActionText, dynamicStyles.buttonText]}>Log In</Text>
-                                        <Ionicons name="arrow-forward" size={22 * scale} color={colors.white} />
+                                        <Text style={[styles.primaryActionText, dynamicStyles.buttonText]}>Get Started</Text>
+                                        <Ionicons name="arrow-forward" size={20 * scale} color={colors.white} />
                                     </LinearGradient>
                                 </TouchableOpacity>
 
@@ -224,12 +219,16 @@ export default function SplashScreen({ navigation }) {
                                     onPress={() => navigation.navigate("Signup")}
                                     activeOpacity={0.7}
                                 >
-                                    <View style={styles.secondaryActionInner}>
-                                        <Text style={[styles.secondaryActionText, dynamicStyles.buttonText]}>Create New Account</Text>
-                                    </View>
+                                    <Text style={[styles.secondaryActionText, dynamicStyles.buttonText]}>Create Account</Text>
                                 </TouchableOpacity>
                             </View>
 
+                            {/* Refined Footer */}
+                            <View style={styles.premiumFooter}>
+                                <View style={styles.footerDivider} />
+                                <Text style={styles.footerTagline}>RELIABLE • SUSTAINABLE • INNOVATIVE</Text>
+                                <View style={styles.footerDivider} />
+                            </View>
                         </Animated.View>
                     </ScrollView>
                 </LinearGradient>
@@ -242,15 +241,15 @@ function FeatureItem({ icon, title, description, scale }) {
     return (
         <View style={styles.glassCard}>
             <LinearGradient
-                colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.01)']}
-                style={[styles.cardInner, { padding: 16 * scale }]}
+                colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.02)']}
+                style={[styles.cardInner, { padding: 12 * scale }]}
             >
-                <View style={[styles.iconBox, { width: 48 * scale, height: 48 * scale, borderRadius: 24 * scale }]}>
-                    <Ionicons name={icon} size={24 * scale} color="#A7F3D0" />
+                <View style={[styles.iconBox, { width: 44 * scale, height: 44 * scale, borderRadius: 22 * scale }]}>
+                    <Ionicons name={icon} size={24 * scale} color={colors.cinnamonLight} />
                 </View>
                 <View style={styles.cardContent}>
-                    <Text style={[styles.cardTitle, { fontSize: 16 * scale }]}>{title}</Text>
-                    <Text style={[styles.cardDesc, { fontSize: 13 * scale }]}>{description}</Text>
+                    <Text style={[styles.cardTitle, { fontSize: 14 * scale }]}>{title}</Text>
+                    <Text style={[styles.cardDesc, { fontSize: 12 * scale }]}>{description}</Text>
                 </View>
             </LinearGradient>
         </View>
@@ -282,12 +281,85 @@ const styles = StyleSheet.create({
         maxWidth: 500,
     },
     logoContainer: {
-        marginBottom: 25,
+        marginBottom: 15,
         ...Platform.select({
             ios: {
-                shadowColor: "#A7F3D0",
+                shadowColor: colors.cinnamon,
+                shadowOffset: { width: 0, height: 12 },
+                shadowOpacity: 0.35,
+                shadowRadius: 18,
+            },
+            android: {
+                elevation: 12,
+            }
+        })
+    },
+    logoGlass: {
+        padding: 15,
+        borderRadius: 25,
+        borderWidth: 1.5,
+        borderColor: "rgba(255,255,255,0.25)",
+        backgroundColor: "rgba(255,255,255,0.05)",
+    },
+    logoImage: {
+    },
+    brandingSection: {
+        alignItems: "center",
+        marginBottom: 20,
+        paddingHorizontal: 20,
+    },
+    accentLine: {
+        width: 45,
+        height: 3,
+        backgroundColor: colors.cinnamon,
+        borderRadius: 2,
+        marginTop: 10,
+    },
+    featuresWrapper: {
+        width: "90%",
+        marginBottom: 15,
+    },
+    glassCard: {
+        borderRadius: 20,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.12)",
+    },
+    cardInner: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    iconBox: {
+        backgroundColor: "rgba(210,105,30,0.18)",
+        justifyContent: "center",
+        alignItems: "center",
+        marginRight: 16,
+    },
+    cardContent: {
+        flex: 1,
+    },
+    cardTitle: {
+        color: colors.white,
+        fontWeight: "800",
+        marginBottom: 4,
+    },
+    cardDesc: {
+        color: "rgba(255,255,255,0.6)",
+        fontWeight: "400",
+    },
+    actionGroup: {
+        width: "90%",
+        gap: 12,
+    },
+    primaryAction: {
+        width: "100%",
+        borderRadius: 15,
+        overflow: "hidden",
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.cinnamon,
                 shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.4,
+                shadowOpacity: 0.45,
                 shadowRadius: 15,
             },
             android: {
@@ -295,117 +367,45 @@ const styles = StyleSheet.create({
             }
         })
     },
-    logoGlass: {
-        padding: 18,
-        borderRadius: 40,
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.3)",
-        backgroundColor: "rgba(255,255,255,0.1)",
-    },
-    logoInnerCircle: {
-        backgroundColor: "rgba(255,255,255,0.95)",
-        borderRadius: 30,
-        padding: 10,
-    },
-    logoImage: {
-    },
-    brandingSection: {
-        alignItems: "center",
-        marginBottom: 35,
-        paddingHorizontal: 25,
-    },
-    accentContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginTop: 15,
-        marginBottom: 5,
-    },
-    accentLine: {
-        width: 30,
-        height: 1,
-        backgroundColor: "rgba(167, 243, 208, 0.4)",
-    },
-    accentIcon: {
-        paddingHorizontal: 10,
-    },
-    featuresWrapper: {
-        width: "90%",
-        marginBottom: 20,
-    },
-    glassCard: {
-        borderRadius: 18,
-        overflow: "hidden",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.08)",
-        backgroundColor: "rgba(0,0,0,0.2)",
-    },
-    cardInner: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    iconBox: {
-        backgroundColor: "rgba(167, 243, 208, 0.15)",
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 15,
-    },
-    cardContent: {
-        flex: 1,
-    },
-    cardTitle: {
-        color: colors.white,
-        fontWeight: "700",
-        marginBottom: 3,
-    },
-    cardDesc: {
-        color: "rgba(255,255,255,0.55)",
-        fontWeight: "400",
-    },
-    actionGroup: {
-        width: "85%",
-        gap: 16,
-    },
-    primaryAction: {
-        width: "100%",
-        borderRadius: 18,
-        overflow: "hidden",
-        ...Platform.select({
-            ios: {
-                shadowColor: "#00b09b",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.35,
-                shadowRadius: 12,
-            },
-            android: {
-                elevation: 8,
-            }
-        })
-    },
     actionGradient: {
-        height: 60,
+        height: 52,
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        gap: 12,
+        gap: 10,
     },
     primaryActionText: {
         color: colors.white,
     },
     secondaryAction: {
-        height: 60,
-        borderRadius: 18,
-        overflow: "hidden",
-    },
-    secondaryActionInner: {
-        flex: 1,
-        backgroundColor: "rgba(255,255,255,0.05)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.2)",
-        borderRadius: 18,
+        height: 52,
+        borderRadius: 15,
+        borderWidth: 2,
+        borderColor: "rgba(255,255,255,0.35)",
         justifyContent: "center",
         alignItems: "center",
+        backgroundColor: "rgba(255,255,255,0.08)",
     },
     secondaryActionText: {
-        color: "rgba(255,255,255,0.9)",
+        color: colors.white,
+    },
+    premiumFooter: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 15,
+        paddingHorizontal: 35,
+        opacity: 0.4,
+    },
+    footerDivider: {
+        flex: 1,
+        height: 1,
+        backgroundColor: colors.white,
+    },
+    footerTagline: {
+        fontSize: 9,
+        color: colors.white,
+        fontWeight: "700",
+        paddingHorizontal: 15,
+        letterSpacing: 2,
     },
 });

@@ -13,11 +13,49 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "../styles/colors";
+import { auth, db } from "../config/vacant/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 const GeneralSettingsScreen = () => {
     const navigation = useNavigation();
     const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
     const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
+
+    const [userInfo, setUserInfo] = React.useState({
+        name: "Loading...",
+        email: "Loading...",
+    });
+
+    React.useEffect(() => {
+        fetchUserProfile();
+    }, []);
+
+    const fetchUserProfile = async () => {
+        const user = auth.currentUser;
+        if (user) {
+            try {
+                const docRef = doc(db, "users", user.uid);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setUserInfo({
+                        name: data.fullName || user.displayName || "User",
+                        email: data.email || user.email || "",
+                    });
+                } else {
+                    setUserInfo({
+                        name: user.displayName || "User",
+                        email: user.email || "",
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+            }
+        } else {
+            setUserInfo({ name: "Guest", email: "" });
+        }
+    };
 
     const SettingItem = ({ icon, title, subtitle, onPress, showChevron = true, renderRight }) => (
         <TouchableOpacity
@@ -50,7 +88,14 @@ const GeneralSettingsScreen = () => {
                 {
                     text: "Log Out",
                     style: "destructive",
-                    onPress: () => navigation.navigate("Login")
+                    onPress: async () => {
+                        try {
+                            await auth.signOut();
+                            navigation.replace("Login");
+                        } catch (error) {
+                            Alert.alert("Error", "Failed to logout");
+                        }
+                    }
                 },
             ]
         );
@@ -97,8 +142,8 @@ const GeneralSettingsScreen = () => {
                                 <Ionicons name="person" size={40} color={colors.white} />
                             </View>
                             <View style={styles.profileInfo}>
-                                <Text style={styles.profileName}>Cinnamon  User</Text>
-                                <Text style={styles.profileEmail}>user@cinnamon.lk</Text>
+                                <Text style={styles.profileName}>{userInfo.name}</Text>
+                                <Text style={styles.profileEmail}>{userInfo.email}</Text>
                             </View>
                             <View style={styles.editButton}>
                                 <Ionicons name="chevron-forward" size={20} color={colors.white} />
@@ -111,13 +156,6 @@ const GeneralSettingsScreen = () => {
                 <View style={styles.sectionContainer}>
                     <Text style={styles.sectionHeader}>General</Text>
                     <View style={styles.sectionContent}>
-                        <SettingItem
-                            icon="person-outline"
-                            title="Personal Information"
-                            subtitle="Edit your profile details"
-                            onPress={() => { }}
-                        />
-                        <View style={styles.separator} />
                         <SettingItem
                             icon="notifications-outline"
                             title="Notifications"

@@ -17,7 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "../styles/colors";
 import { auth, db } from "../config/vacant/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const ProfileScreen = () => {
     const navigation = useNavigation();
@@ -46,18 +46,18 @@ const ProfileScreen = () => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     setUserInfo({
-                        name: data.fullName || user.displayName || "N/A",
-                        email: data.email || user.email || "N/A",
-                        phone: data.phone || "N/A",
-                        address: data.address || "N/A",
-                        bio: data.bio || "N/A",
+                        name: data.fullName || user.displayName || "",
+                        email: data.email || user.email || "",
+                        phone: data.phone || "",
+                        address: data.address || "",
+                        bio: data.bio || "",
                     });
                 } else {
                     // Fallback to Auth profile if Firestore doc doesn't exist
                     setUserInfo(prev => ({
                         ...prev,
-                        name: user.displayName || "N/A",
-                        email: user.email || "N/A",
+                        name: user.displayName || "",
+                        email: user.email || "",
                     }));
                 }
             } catch (error) {
@@ -75,12 +75,13 @@ const ProfileScreen = () => {
 
         try {
             const userRef = doc(db, "users", user.uid);
-            await updateDoc(userRef, {
+            await setDoc(userRef, {
                 fullName: userInfo.name,
+                email: userInfo.email,
                 phone: userInfo.phone,
                 address: userInfo.address,
                 bio: userInfo.bio,
-            });
+            }, { merge: true });
             setIsEditing(false);
             Alert.alert("Success", "Profile updated successfully!");
         } catch (error) {
@@ -102,7 +103,7 @@ const ProfileScreen = () => {
                     placeholderTextColor="#999"
                 />
             ) : (
-                <Text style={styles.infoText}>{value}</Text>
+                <Text style={styles.infoText}>{value || "N/A"}</Text>
             )}
         </View>
     );
