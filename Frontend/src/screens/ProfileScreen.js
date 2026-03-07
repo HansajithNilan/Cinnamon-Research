@@ -141,6 +141,7 @@ const ProfileScreen = () => {
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={styles.container}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
             <View style={styles.headerWrapper}>
                 <LinearGradient
@@ -166,7 +167,11 @@ const ProfileScreen = () => {
                 </LinearGradient>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+            >
 
                 {/* Avatar Section */}
                 <View style={styles.avatarSection}>

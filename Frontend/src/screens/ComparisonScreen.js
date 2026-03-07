@@ -146,7 +146,7 @@ const ComparisonScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#2E7D32" />
-      
+
       <View style={styles.headerWrapper}>
         <LinearGradient
           colors={["#2E7D32", "#4CAF50", "#66BB6A"]}
@@ -157,12 +157,12 @@ const ComparisonScreen = ({ navigation }) => {
           {/* Decorative Elements */}
           <View style={styles.decorativeCircle1} />
           <View style={styles.decorativeCircle2} />
-          
+
           {/* Top Bar */}
           <View style={styles.topBar}>
             <View style={styles.headerLeft}>
-              <TouchableOpacity 
-                onPress={() => navigation.goBack()} 
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
                 style={styles.backButton}
               >
                 <Ionicons name="arrow-back" size={24} color={colors.white} />
@@ -244,7 +244,10 @@ const ComparisonScreen = ({ navigation }) => {
               <Text style={styles.alertDescription}>
                 Some conditions are outside the recommended quality ranges. Immediate attention required. | සමහර තත්ත්වයන් නිර්දේශිත ගුණාත්මක පරාසයන්ට පිටතය. ක්ෂණික අවධානය අවශ්‍යයි.
               </Text>
-              <TouchableOpacity style={styles.alertButton}>
+              <TouchableOpacity
+                style={styles.alertButton}
+                onPress={() => navigation.navigate('Suggestion')}
+              >
                 <Text style={styles.alertButtonText}>View Details | විස්තර බලන්න</Text>
                 <Ionicons name="chevron-forward" size={18} color="#FF6B6B" />
               </TouchableOpacity>

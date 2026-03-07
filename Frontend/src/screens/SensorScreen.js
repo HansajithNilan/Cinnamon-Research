@@ -23,30 +23,13 @@ import {
   getMotionStatus,
   getAirQualityStatus,
 } from "../config/soil/warehouseThresholds";
-import { initializeApp, getApps } from "firebase/app";
-import { getDatabase, ref, onValue, off } from "firebase/database";
+import { ref, onValue, off } from "firebase/database";
+import { database as warehouseDb } from "../config/warehouse/firebase";
 
 const { width } = Dimensions.get("window");
 const cardWidth = (width - 52) / 2;
 
-// Warehouse Firebase config (separate from soil project)
-const warehouseFirebaseConfig = {
-  apiKey: "AIzaSyDUFvbL5N39Jt_eAOf-X1RrDhkWOzBD0Fk",
-  databaseURL: "https://cinnamon-warehouse-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  projectId: "cinnamon-warehouse",
-};
-
 const DEVICE_ID = "249627E81F84";
-
-// Initialize warehouse Firebase app (avoid duplicate initialization)
-let warehouseApp;
-const existingApp = getApps().find((a) => a.name === "warehouse");
-if (existingApp) {
-  warehouseApp = existingApp;
-} else {
-  warehouseApp = initializeApp(warehouseFirebaseConfig, "warehouse");
-}
-const warehouseDb = getDatabase(warehouseApp);
 
 function formatTimeAgo(dateTimeStr) {
   if (!dateTimeStr) return "—";

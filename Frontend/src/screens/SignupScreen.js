@@ -5,6 +5,8 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
+    KeyboardAvoidingView,
+    Platform,
     TouchableWithoutFeedback,
     Keyboard,
     Dimensions,
@@ -72,98 +74,108 @@ export default function SignupScreen({ navigation }) {
     };
 
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.container}>
-                <StatusBar style="dark" />
+        <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.container}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={styles.container}>
+                    <StatusBar style="dark" />
 
-                {/* Header Background */}
-                <View style={styles.headerBackground}>
-                    <LinearGradient
-                        colors={[colors.primaryDark, colors.primary]}
-                        style={styles.gradient}
-                    />
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Ionicons name="arrow-back" size={24} color={colors.white} />
-                    </TouchableOpacity>
-                </View>
+                    {/* Header Background */}
+                    <View style={styles.headerBackground}>
+                        <LinearGradient
+                            colors={[colors.primaryDark, colors.primary]}
+                            style={styles.gradient}
+                        />
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={() => navigation.goBack()}
+                        >
+                            <Ionicons name="arrow-back" size={24} color={colors.white} />
+                        </TouchableOpacity>
+                    </View>
 
-                <View style={styles.formContainer}>
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                        <View style={styles.titleContainer}>
-                            <Text style={styles.title}>Create Account</Text>
-                            <Text style={styles.subtitle}>Join the community</Text>
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <View style={styles.inputWrapper}>
-                                <Ionicons name="person-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Full Name"
-                                    placeholderTextColor={colors.textSecondary}
-                                    value={name}
-                                    onChangeText={setName}
-                                />
+                    <View style={styles.formContainer}>
+                        <ScrollView
+                            contentContainerStyle={{ flexGrow: 1, paddingBottom: 50 }}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            <View style={styles.titleContainer}>
+                                <Text style={styles.title}>Create Account</Text>
+                                <Text style={styles.subtitle}>Join the community</Text>
                             </View>
 
-                            <View style={styles.inputWrapper}>
-                                <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Email Address"
-                                    placeholderTextColor={colors.textSecondary}
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                />
-                            </View>
-
-                            <View style={styles.inputWrapper}>
-                                <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Password"
-                                    placeholderTextColor={colors.textSecondary}
-                                    value={password}
-                                    onChangeText={setPassword}
-                                    secureTextEntry={!showPassword}
-                                />
-                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                                    <Ionicons
-                                        name={showPassword ? "eye-off-outline" : "eye-outline"}
-                                        size={20}
-                                        color={colors.textSecondary}
+                            <View style={styles.inputContainer}>
+                                <View style={styles.inputWrapper}>
+                                    <Ionicons name="person-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Full Name"
+                                        placeholderTextColor={colors.textSecondary}
+                                        value={name}
+                                        onChangeText={setName}
                                     />
+                                </View>
+
+                                <View style={styles.inputWrapper}>
+                                    <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Email Address"
+                                        placeholderTextColor={colors.textSecondary}
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+
+                                <View style={styles.inputWrapper}>
+                                    <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Password"
+                                        placeholderTextColor={colors.textSecondary}
+                                        value={password}
+                                        onChangeText={setPassword}
+                                        secureTextEntry={!showPassword}
+                                    />
+                                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                        <Ionicons
+                                            name={showPassword ? "eye-off-outline" : "eye-outline"}
+                                            size={20}
+                                            color={colors.textSecondary}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <TouchableOpacity
+                                    style={[styles.signupButton, loading && { opacity: 0.7 }]}
+                                    onPress={handleSignup}
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <ActivityIndicator color={colors.white} />
+                                    ) : (
+                                        <Text style={styles.signupButtonText}>SIGN UP</Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
 
-                            <TouchableOpacity
-                                style={[styles.signupButton, loading && { opacity: 0.7 }]}
-                                onPress={handleSignup}
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color={colors.white} />
-                                ) : (
-                                    <Text style={styles.signupButtonText}>SIGN UP</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.footer}>
-                            <Text style={styles.footerText}>Already have an account? </Text>
-                            <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-                                <Text style={styles.loginText}>Log In</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </ScrollView>
+                            <View style={styles.footer}>
+                                <Text style={styles.footerText}>Already have an account? </Text>
+                                <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+                                    <Text style={styles.loginText}>Log In</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </ScrollView>
+                    </View>
                 </View>
-            </View>
-        </TouchableWithoutFeedback>
+            </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
     );
 }
 

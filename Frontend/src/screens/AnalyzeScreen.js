@@ -523,7 +523,7 @@ const AnalyzeScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scrollContent: { padding: 20, paddingBottom: 40 },
-  centerContent: { flex: 1, padding: 20, justifyContent: "center", alignItems: "center" },
+  centerContent: { flexGrow: 1, padding: 20, paddingBottom: 40, justifyContent: "center", alignItems: "center" },
   headerWrapper: { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: "hidden", elevation: 4 },
   headerGradient: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20 },
   headerContent: { flexDirection: "row", alignItems: "center" },
