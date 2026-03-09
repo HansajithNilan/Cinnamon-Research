@@ -18,13 +18,15 @@ import { initializeApp, getApps } from "firebase/app";
 import { getDatabase, ref, onValue, off } from "firebase/database";
 
 // ── Notification setup ─────────────────────────────────────────────────────────
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
 
 // ── Firebase ───────────────────────────────────────────────────────────────────
 const warehouseFirebaseConfig = {
@@ -91,8 +93,9 @@ const SuggestionsScreen = ({ navigation }) => {
   const permGranted  = useRef(false);
   const lastRiskKey  = useRef(null); // track last risk_type+label to avoid duplicate notifications
 
-  // Request notification permission once
+  // Request notification permission once (native only)
   useEffect(() => {
+    if (Platform.OS === "web") return;
     Notifications.requestPermissionsAsync().then(({ status }) => {
       permGranted.current = status === "granted";
     });
@@ -143,9 +146,9 @@ const SuggestionsScreen = ({ navigation }) => {
           setPrediction(json);
           setError(null);
 
-          // Fire notification only when risk type/label changes
+          // Fire notification only when risk type/label changes (native only)
           const riskKey = `${json.risk_label}|${json.risk_type}`;
-          if (permGranted.current && riskKey !== lastRiskKey.current) {
+          if (Platform.OS !== "web" && permGranted.current && riskKey !== lastRiskKey.current) {
             lastRiskKey.current = riskKey;
             await Notifications.scheduleNotificationAsync({
               content: {
