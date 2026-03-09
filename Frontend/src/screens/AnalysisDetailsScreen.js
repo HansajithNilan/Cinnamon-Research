@@ -22,6 +22,18 @@ export default function AnalysisDetailsScreen({ route, navigation }) {
     const conditionStatus = isHealthy ? "Healthy" : "Infected";
     const statusColor = isHealthy ? "#10B981" : "#EF4444";
 
+    const getRiskStatus = (value) => {
+        if (isHealthy) return { label: "SAFE", color: "#10B981", bg: "#D1FAE5", text: "#065F46" };
+        const val = parseFloat(value);
+        if (val < 35) {
+            return { label: "LOW RISK", color: "#10B981", bg: "#D1FAE5", text: "#065F46" };
+        } else if (val >= 35 && val < 70) {
+            return { label: "HIGH RISK", color: "#F59E0B", bg: "#FEF3C7", text: "#92400E" };
+        } else {
+            return { label: "CRITICAL", color: "#EF4444", bg: "#FEE2E2", text: "#991B1B" };
+        }
+    };
+
     return (
         <View style={styles.container}>
             <ScrollView
@@ -78,9 +90,10 @@ export default function AnalysisDetailsScreen({ route, navigation }) {
 
                         <View style={styles.row}>
                             <Text style={styles.label}>Risk Level</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Text style={{ fontSize: 16 }}>{riskColor} </Text>
-                                <Text style={styles.valueSecondary}>{riskStatus}</Text>
+                            <View style={[styles.riskBadgeSmall, { backgroundColor: getRiskStatus(severity).bg }]}>
+                                <Text style={[styles.riskBadgeTextSmall, { color: getRiskStatus(severity).text }]}>
+                                    {getRiskStatus(severity).label}
+                                </Text>
                             </View>
                         </View>
 
@@ -108,19 +121,31 @@ export default function AnalysisDetailsScreen({ route, navigation }) {
                             <Text style={styles.sectionTitle}>Spread Forecast</Text>
                             <View style={styles.forecastGrid}>
                                 <View style={styles.forecastItem}>
-                                    <Text style={styles.forecastLabel}>Tomorrow</Text>
-                                    <Text style={styles.forecastValue}>{forecast.day_1}%</Text>
-                                    <Text style={styles.forecastDay}>Day 1</Text>
+                                    <Text style={styles.forecastLabel}> In 7 Days</Text>
+                                    <Text style={[styles.forecastValue, { color: getRiskStatus(forecast.day_1).color }]}>{forecast.day_1}%</Text>
+                                    <View style={[styles.smallBadge, { backgroundColor: getRiskStatus(forecast.day_1).bg }]}>
+                                        <Text style={[styles.smallBadgeText, { color: getRiskStatus(forecast.day_1).text }]}>
+                                            {getRiskStatus(forecast.day_1).label}
+                                        </Text>
+                                    </View>
                                 </View>
                                 <View style={styles.forecastItem}>
-                                    <Text style={styles.forecastLabel}>In 3 Days</Text>
-                                    <Text style={styles.forecastValue}>{forecast.day_3}%</Text>
-                                    <Text style={styles.forecastDay}>Day 3</Text>
+                                    <Text style={styles.forecastLabel}>In Two Weeks</Text>
+                                    <Text style={[styles.forecastValue, { color: getRiskStatus(forecast.day_3).color }]}>{forecast.day_3}%</Text>
+                                    <View style={[styles.smallBadge, { backgroundColor: getRiskStatus(forecast.day_3).bg }]}>
+                                        <Text style={[styles.smallBadgeText, { color: getRiskStatus(forecast.day_3).text }]}>
+                                            {getRiskStatus(forecast.day_3).label}
+                                        </Text>
+                                    </View>
                                 </View>
                                 <View style={styles.forecastItem}>
-                                    <Text style={styles.forecastLabel}>Next Week</Text>
-                                    <Text style={styles.forecastValue}>{forecast.day_7}%</Text>
-                                    <Text style={styles.forecastDay}>Day 7</Text>
+                                    <Text style={styles.forecastLabel}>After One Month</Text>
+                                    <Text style={[styles.forecastValue, { color: getRiskStatus(forecast.day_7).color }]}>{forecast.day_7}%</Text>
+                                    <View style={[styles.smallBadge, { backgroundColor: getRiskStatus(forecast.day_7).bg }]}>
+                                        <Text style={[styles.smallBadgeText, { color: getRiskStatus(forecast.day_7).text }]}>
+                                            {getRiskStatus(forecast.day_7).label}
+                                        </Text>
+                                    </View>
                                 </View>
                             </View>
                         </View>
@@ -135,14 +160,14 @@ export default function AnalysisDetailsScreen({ route, navigation }) {
                         <Text style={styles.adviceText}>{advice}</Text>
                     </View>
 
-                    {/* Back to Home Button */}
+                    {/* View Guide Button */}
                     <TouchableOpacity
                         style={styles.primaryButton}
                         activeOpacity={0.8}
-                        onPress={() => navigation.navigate('Main', { screen: 'Home' })}
+                        onPress={() => navigation.navigate('Guide', { riskLevel: getRiskStatus(severity).label })}
                     >
-                        <Ionicons name="home" size={20} color="#fff" />
-                        <Text style={styles.primaryButtonText}>Go to Home</Text>
+                        <Ionicons name="book-outline" size={22} color="#fff" />
+                        <Text style={styles.primaryButtonText}>View Management Guide</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -326,6 +351,25 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         fontWeight: '500',
+    },
+    riskBadgeSmall: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    riskBadgeTextSmall: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    smallBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        borderRadius: 6,
+        marginTop: 4,
+    },
+    smallBadgeText: {
+        fontSize: 8,
+        fontWeight: '800',
     },
     advisoryCard: {
         backgroundColor: '#ECFDF5',

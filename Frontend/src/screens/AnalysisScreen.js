@@ -154,9 +154,18 @@ const AnalysisScreen = ({ navigation, route }) => {
               <View style={styles.iconBadge}><Ionicons name="pulse" size={20} color="#1B9568" /></View>
               <Text style={styles.predictionLabel}>Current Infection Rate</Text>
             </View>
-            <Text style={[styles.predictionValue, parameters.currentInfection !== "Calculating..." && { color: getRiskStatus(parameters.currentInfection).color }]}>
-              {parameters.currentInfection}
-            </Text>
+            <View style={styles.predictionValueContainer}>
+              <Text style={[styles.predictionValue, parameters.currentInfection !== "Calculating..." && { color: getRiskStatus(parameters.currentInfection).color }]}>
+                {parameters.currentInfection}
+              </Text>
+              {parameters.currentInfection !== "Calculating..." && (
+                <View style={[styles.riskBadge, { backgroundColor: getRiskStatus(parameters.currentInfection).bg }]}>
+                  <Text style={[styles.riskBadgeText, { color: getRiskStatus(parameters.currentInfection).text }]}>
+                    {getRiskStatus(parameters.currentInfection).label}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
 
           <View style={styles.divider} />
@@ -165,7 +174,7 @@ const AnalysisScreen = ({ navigation, route }) => {
           <View style={styles.predictionCard}>
             <View style={styles.predictionHeader}>
               <View style={styles.iconBadge}><Ionicons name="time-outline" size={20} color="#10B981" /></View>
-              <Text style={styles.predictionLabel}>1 Day Prediction</Text>
+              <Text style={styles.predictionLabel}>In 7 Days</Text>
             </View>
             <View style={styles.predictionValueContainer}>
               <Text style={[styles.predictionValue, parameters.prediction1Day !== "Calculating..." && { color: getRiskStatus(parameters.prediction1Day).color }]}>
@@ -189,7 +198,7 @@ const AnalysisScreen = ({ navigation, route }) => {
               <View style={[styles.iconBadge, { backgroundColor: getRiskStatus(parameters.prediction3Days).bg }]}>
                 <Ionicons name="alert-circle-outline" size={20} color={getRiskStatus(parameters.prediction3Days).color} />
               </View>
-              <Text style={styles.predictionLabel}>3 Days Prediction</Text>
+              <Text style={styles.predictionLabel}>In Two Weeks</Text>
             </View>
             <View style={styles.predictionValueContainer}>
               <Text style={[styles.predictionValue, parameters.prediction3Days !== "Calculating..." && { color: getRiskStatus(parameters.prediction3Days).color }]}>
@@ -213,7 +222,7 @@ const AnalysisScreen = ({ navigation, route }) => {
               <View style={[styles.iconBadge, { backgroundColor: getRiskStatus(parameters.prediction7Days).bg }]}>
                 <Ionicons name="warning-outline" size={20} color={getRiskStatus(parameters.prediction7Days).color} />
               </View>
-              <Text style={styles.predictionLabel}>7 Days Prediction</Text>
+              <Text style={styles.predictionLabel}>After One Month</Text>
             </View>
             <View style={styles.predictionValueContainer}>
               <Text style={[styles.predictionValue, parameters.prediction7Days !== "Calculating..." && { color: getRiskStatus(parameters.prediction7Days).color }]}>
