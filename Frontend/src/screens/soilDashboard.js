@@ -189,9 +189,13 @@ function SoilMonitorScreen({ navigation }) {
     // Real-time sensor data from Firebase
     const [sensorData, setSensorData] = useState({
         nitrogen: 0,
+        nitrogenRaw: 0,
         phosphorus: 0,
+        phosphorusRaw: 0,
         potassium: 0,
+        potassiumRaw: 0,
         moisture: 0,
+        moistureRaw: 0,
         ph: 0,
         ec: 0,
         temperature: 0,
@@ -213,9 +217,13 @@ function SoilMonitorScreen({ navigation }) {
 
                 setSensorData({
                     nitrogen: Math.round(nitrogenPercent),
+                    nitrogenRaw: result.data.nitrogen || 0,
                     phosphorus: Math.round(phosphorusPercent),
+                    phosphorusRaw: result.data.phosphorus || 0,
                     potassium: Math.round(potassiumPercent),
+                    potassiumRaw: result.data.potassium || 0,
                     moisture: Math.round(moisturePercent),
+                    moistureRaw: result.data.moisture || 0,
                     ph: result.data.ph || 0,
                     ec: result.data.ec || 0,
                     temperature: result.data.temperature || 0,
@@ -408,6 +416,8 @@ function SoilMonitorScreen({ navigation }) {
                             title="Nitrogen (N)"
                             titleSinhala="නයිට්රජන්"
                             percentage={sensorData.nitrogen}
+                            value={sensorData.nitrogenRaw.toFixed(1)}
+                            unit="mg/kg"
                             color={metricColors.nitrogen}
                             icon="leaf"
                         />
@@ -415,6 +425,8 @@ function SoilMonitorScreen({ navigation }) {
                             title="Phosphorus (P)"
                             titleSinhala="පොස්පරස්"
                             percentage={sensorData.phosphorus}
+                            value={sensorData.phosphorusRaw.toFixed(1)}
+                            unit="mg/kg"
                             color={metricColors.phosphorus}
                             icon="atom"
                         />
@@ -422,6 +434,8 @@ function SoilMonitorScreen({ navigation }) {
                             title="Potassium (K)"
                             titleSinhala="පොටෑසියම්"
                             percentage={sensorData.potassium}
+                            value={sensorData.potassiumRaw.toFixed(1)}
+                            unit="mg/kg"
                             color={metricColors.potassium}
                             icon="flask"
                         />
@@ -429,6 +443,8 @@ function SoilMonitorScreen({ navigation }) {
                             title="Moisture"
                             titleSinhala="තෙතමනය"
                             percentage={sensorData.moisture}
+                            value={sensorData.moistureRaw.toFixed(1)}
+                            unit="%"
                             color={metricColors.moisture}
                             icon="water"
                         />

@@ -236,7 +236,7 @@ const ComparisonScreen = ({ navigation }) => {
             </View>
             <View style={styles.alertContent}>
               <View style={styles.alertHeader}>
-                <Text style={styles.alertTitle}>{alertCount + warningCount} Issues Detected | ගැටළු හඳුනාගත්</Text>
+                <Text style={styles.alertTitle}> Issues Detected | ගැටළු හඳුනාගත්</Text>
                 <View style={styles.alertBadge}>
                   <Ionicons name="alert" size={16} color="#FF6B6B" />
                 </View>

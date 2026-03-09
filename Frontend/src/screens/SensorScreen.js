@@ -56,18 +56,26 @@ function formatTimeAgo(dateTimeStr) {
 // Fetch the latest entry from a date-partitioned path
 function subscribeLatest(path, callback) {
   const dbRef = ref(warehouseDb, path);
+  console.log("🔗 Subscribing to:", path);
   // Listen to the whole category node; we pick the last date and last timestamp
   const listener = onValue(dbRef, (snap) => {
     const data = snap.val();
-    if (!data) { callback(null); return; }
+    console.log(`📦 Data from ${path}:`, data);
+    if (!data) { 
+      console.warn(`⚠️  No data at ${path}`);
+      callback(null); 
+      return; 
+    }
 
     const dates = Object.keys(data).sort();
     const latestDate = dates[dates.length - 1];
     const timestamps = Object.keys(data[latestDate]).sort((a, b) => Number(a) - Number(b));
     const latestTs = timestamps[timestamps.length - 1];
-    callback(data[latestDate][latestTs]);
+    const entry = data[latestDate][latestTs];
+    console.log(`✅ Latest from ${path} (${latestDate}@${latestTs}):`, entry);
+    callback(entry);
   }, (error) => {
-    console.error(`Firebase error at ${path}:`, error);
+    console.error(`❌ Firebase error at ${path}:`, error);
     callback(null);
   });
 
@@ -84,6 +92,7 @@ const SensorScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [lastSyncTs, setLastSyncTs] = useState(null); // ms timestamp
   const [isOnline, setIsOnline] = useState(false);
+  const [dataUpdateCount, setDataUpdateCount] = useState(0); // Track real-time updates
 
   const unsubscribers = useRef([]);
 
@@ -102,6 +111,15 @@ const SensorScreen = ({ navigation }) => {
 
   useEffect(() => {
     const basePath = `devices/${DEVICE_ID}`;
+
+    console.log("📍 Firebase Base Path:", basePath);
+    console.log("🔧 Expected Paths:");
+    console.log("  - Temperature:", `${basePath}/temperature_data`);
+    console.log("  - Humidity:", `${basePath}/humidity_data`);
+    console.log("  - Air Quality:", `${basePath}/air_quality_data`);
+    console.log("  - Light:", `${basePath}/light_data`);
+    console.log("  - Motion:", `${basePath}/readings`);
+
     let loadedCount = 0;
     const totalSources = 4;
 
@@ -126,28 +144,35 @@ const SensorScreen = ({ navigation }) => {
       if (loadedCount >= totalSources) {
         setLoading(false);
       }
+      // Track real-time updates
+      setDataUpdateCount(prev => prev + 1);
+      console.log(`📊 Data Update Count: ${loadedCount}/${totalSources}`);
     }
 
     // Temperature
     const unsubTemp = subscribeLatest(`${basePath}/temperature_data`, (entry) => {
+      console.log("🌡️  Temperature:", entry);
       setTemperature(entry);
       markLoaded(entry);
     });
 
     // Humidity
     const unsubHumid = subscribeLatest(`${basePath}/humidity_data`, (entry) => {
+      console.log("💧 Humidity:", entry);
       setHumidity(entry);
       markLoaded(entry);
     });
 
     // Air quality (CO2 + VOC)
     const unsubAir = subscribeLatest(`${basePath}/air_quality_data`, (entry) => {
+      console.log("🌫️  Air Quality:", entry);
       setAirQuality(entry);
       markLoaded(entry);
     });
 
     // Light
     const unsubLight = subscribeLatest(`${basePath}/light_data`, (entry) => {
+      console.log("💡 Light:", entry);
       setLight(entry);
       markLoaded(entry);
     });
@@ -156,9 +181,11 @@ const SensorScreen = ({ navigation }) => {
     const motionRef = ref(warehouseDb, `${basePath}/readings`);
     const motionListener = onValue(motionRef, (snap) => {
       const data = snap.val();
+      console.log("📍 Motion Raw Data:", data);
       if (!data) { setMotion(null); return; }
       const keys = Object.keys(data).sort((a, b) => Number(a) - Number(b));
       const latest = data[keys[keys.length - 1]];
+      console.log("🚨 Motion Latest:", latest);
       setMotion({
         motion_detected: latest.motion_detected,
         motion_confidence: latest.motion_confidence,
@@ -178,6 +205,21 @@ const SensorScreen = ({ navigation }) => {
       unsubscribers.current.forEach((fn) => fn && fn());
     };
   }, []);
+
+  // Log real-time data updates
+  useEffect(() => {
+    if (temperature || humidity || airQuality || light || motion) {
+      console.log("\n🔍 REAL-TIME DATA RECEIVED:");
+      console.log("✅ Temperature:", temperature?.value, "°C @", temperature?.date_time);
+      console.log("✅ Humidity:", humidity?.value, "% @", humidity?.date_time);
+      console.log("✅ Air Quality:", { co2: airQuality?.co2, voc: airQuality?.voc }, "@", airQuality?.date_time);
+      console.log("✅ Light:", light?.lux, "lux @", light?.date_time);
+      console.log("✅ Motion:", motion?.motion_detected, "@", motion?.date_time);
+      console.log("📊 Total Updates:", dataUpdateCount);
+      console.log("⏱️  Last Sync:", lastSyncTs ? new Date(lastSyncTs).toLocaleString() : "Never");
+      console.log("🌐 Status:", isOnline ? "🟢 ONLINE" : "🔴 OFFLINE", "\n");
+    }
+  }, [temperature, humidity, airQuality, light, motion, dataUpdateCount, isOnline, lastSyncTs]);
 
   // Derived values
   const tempVal = temperature?.value ?? null;
@@ -401,6 +443,16 @@ const SensorScreen = ({ navigation }) => {
             <Text style={styles.sectionTitle}>All Sensors | සියලුම සංවේදක</Text>
           </View>
           {loading && <ActivityIndicator size="small" color={colors.primary} />}
+        </View>
+
+        {/* Real-time Data Status */}
+        <View style={styles.realtimeStatus}>
+          <View style={[styles.statusIndicator, { backgroundColor: isOnline ? "#4CAF50" : "#F44336" }]}>
+            <Ionicons name={isOnline ? "checkmark-circle" : "close-circle"} size={14} color="#FFF" />
+            <Text style={styles.statusText}>
+              {isOnline ? "🔴 Live Data" : "⚫ No Data"} • Updates: {dataUpdateCount}
+            </Text>
+          </View>
         </View>
 
         {loading ? (
@@ -651,6 +703,22 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1A1A1A",
     letterSpacing: 0.3,
+  },
+  realtimeStatus: {
+    marginBottom: 16,
+  },
+  statusIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 8,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFF",
   },
   loadingContainer: {
     alignItems: "center",

@@ -61,172 +61,103 @@ const Tab = createBottomTabNavigator();
 const DashboardContent = () => {
   const navigation = useNavigation();
 
-  // ── Live sensor state ──────────────────────────────────────────────────────
-  const [temperature, setTemperature] = useState(null);
-  const [humidity, setHumidity] = useState(null);
-  const [airQuality, setAirQuality] = useState(null);
-  const [light, setLight] = useState(null);
-  const [motion, setMotion] = useState(null);
-
-  useEffect(() => {
-    const base = `devices/${DEVICE_ID}`;
-    const unsubs = [
-      subscribeLatest(`${base}/temperature_data`, setTemperature),
-      subscribeLatest(`${base}/humidity_data`, setHumidity),
-      subscribeLatest(`${base}/air_quality_data`, setAirQuality),
-      subscribeLatest(`${base}/light_data`, setLight),
-      (() => {
-        const motionRef = ref(warehouseDb, `${base}/readings`);
-        const motionListener = onValue(motionRef, (snap) => {
-          const data = snap.val();
-          if (!data) { setMotion(null); return; }
-          const keys = Object.keys(data).sort((a, b) => Number(a) - Number(b));
-          const latest = data[keys[keys.length - 1]];
-          setMotion({
-            motion_detected: latest.motion_detected,
-            date_time: latest.date ? `${latest.date} ${latest.time}` : null,
-          });
-        }, () => setMotion(null));
-        return () => off(motionRef, "value", motionListener);
-      })(),
-    ];
-    return () => unsubs.forEach((fn) => fn && fn());
-  }, []);
-
-  // ── Derived live values ────────────────────────────────────────────────────
-  const tempVal = temperature?.value ?? null;
-  const humidVal = humidity?.value ?? null;
-  const co2Val = airQuality?.co2 ?? null;
-  const vocVal = airQuality?.voc ?? null;
-  const luxVal = light?.lux ?? null;
-  const motionDetected = motion?.motion_detected ?? null;
-
-  const tempSt = getTempStatus(tempVal);
-  const humidSt = getHumidityStatus(humidVal);
-  const co2St = getCO2Status(co2Val);
-  const vocSt = getVOCStatus(vocVal);
-  const lightSt = getLightStatus(luxVal);
-  const motionSt = getMotionStatus(motionDetected);
-  const airSt = getAirQualityStatus(co2Val);
-
-  const allStatuses = [tempSt, humidSt, co2St, vocSt, lightSt, motionSt];
-  const withData = allStatuses.filter((s) => s.color !== "#999");
-
-  // Alerts = sensors with data that are not in the green/optimal state
-  const alertCount = withData.filter((s) => s.color !== "#00B894").length;
-
-  // Active = sensors that have data
-  const activeCount = [tempVal, humidVal, co2Val, vocVal, luxVal, motionDetected]
-    .filter((v) => v !== null).length;
-
-  // Quality score = % of data-bearing sensors that are optimal
-  const qualityScore = withData.length > 0
-    ? Math.round(((withData.length - alertCount) / withData.length) * 100)
-    : null;
-
   const standards = [
     {
       id: 1,
       icon: "thermometer-outline",
       title: "Temperature | උෂ්ණත්වය",
       description: "Prevents moisture loss and preserves quality | තෙතමනය නැතිවීම වළක්වා ගුණාත්මකභාවය ආරක්ෂා කරයි",
-      value: tempVal !== null ? `${tempVal.toFixed(1)}°C` : "—",
-      valueColor: tempSt.color,
+      range: "25-30°C",
       bgColor: "rgba(255, 107, 107, 0.12)",
       iconBg: "rgba(255, 107, 107, 0.15)",
-      statusLabel: tempSt.label,
-      statusColor: tempSt.color,
+      statusLabel: "Ideal",
+      statusColor: "#00B894",
+      valueColor: "#FF6B6B",
     },
     {
       id: 2,
       icon: "water-outline",
       title: "Humidity | ආර්ද්‍රතාවය",
       description: "Avoids mold growth and maintains stickiness | පුස් වර්ධනය වළක්වා ස්වභාවය පවත්වයි",
-      value: humidVal !== null ? `${humidVal.toFixed(1)}% RH` : "—",
-      valueColor: humidSt.color,
+      range: "60-70% RH",
       bgColor: "rgba(78, 205, 196, 0.12)",
       iconBg: "rgba(78, 205, 196, 0.15)",
-      statusLabel: humidSt.label,
-      statusColor: humidSt.color,
+      statusLabel: "Ideal",
+      statusColor: "#00B894",
+      valueColor: "#4ECDC4",
     },
     {
       id: 3,
       icon: "sunny-outline",
       title: "Light Intensity | ආලෝක තීව්‍රතාවය",
       description: "Protects from UV degradation and fading | UV හානියෙන් සහ වර්ණ මැකීමෙන් ආරක්ෂා කරයි",
-      value: luxVal !== null ? `${Math.round(luxVal).toLocaleString()} lux` : "—",
-      valueColor: lightSt.color,
+      range: "< 100 lux",
       bgColor: "rgba(255, 230, 109, 0.12)",
       iconBg: "rgba(255, 230, 109, 0.2)",
-      statusLabel: lightSt.label,
-      statusColor: lightSt.color,
+      statusLabel: "Ideal",
+      statusColor: "#00B894",
+      valueColor: "#FFE66D",
     },
     {
       id: 4,
       icon: "shield-checkmark-outline",
       title: "Pest Control | පළිබෝධ පාලනය",
       description: "Maintains purity and prevents contamination | පිරිසිදුකම පවත්වා දූෂණය වළක්වයි",
-      value: motionDetected === null ? "—" : motionDetected ? "Detected | හදුනාගත්" : "Clear | පැහැදිලි",
-      valueColor: motionSt.color,
+      range: "No Motion",
       bgColor: "rgba(0, 184, 148, 0.12)",
       iconBg: "rgba(0, 184, 148, 0.15)",
-      statusLabel: motionSt.label,
-      statusColor: motionSt.color,
+      statusLabel: "Ideal",
+      statusColor: "#00B894",
+      valueColor: "#00B894",
     },
     {
       id: 5,
       icon: "cloud-outline",
       title: "CO₂ Level | CO₂ මට්ටම",
       description: "Monitors carbon dioxide for storage safety | ගබඩා ආරක්ෂාව සඳහා කාබන් ඩයොක්සයිඩ් නිරීක්ෂණය කරයි",
-      value: co2Val !== null ? `${Math.round(co2Val)} ppm` : "—",
-      valueColor: co2St.color,
+      range: "< 1000 ppm",
       bgColor: "rgba(162, 155, 254, 0.12)",
       iconBg: "rgba(162, 155, 254, 0.15)",
-      statusLabel: co2St.label,
-      statusColor: co2St.color,
+      statusLabel: "Ideal",
+      statusColor: "#00B894",
+      valueColor: "#A29BFE",
     },
     {
       id: 6,
       icon: "rainy-outline",
       title: "Air Moisture | වායුගෝලීය තෙතමනය",
       description: "Tracks absolute moisture in the air | වාතයේ නිරපේක්ෂ තෙතමනය නිරීක්ෂණය කරයි",
-      value: humidVal !== null ? `${humidVal.toFixed(1)} %RH` : "—",
-      valueColor: humidSt.color,
+      range: "60-70% RH",
       bgColor: "rgba(129, 236, 236, 0.12)",
       iconBg: "rgba(129, 236, 236, 0.15)",
-      statusLabel: humidSt.label,
-      statusColor: humidSt.color,
+      statusLabel: "Ideal",
+      statusColor: "#00B894",
+      valueColor: "#81ECEC",
     },
     {
       id: 7,
       icon: "flask-outline",
       title: "VOC Level | VOC මට්ටම",
       description: "Detects volatile organic compounds | වාෂ්පශීලී කාබනික සංයෝග හඳුනා ගනියි",
-      value: vocVal !== null ? `${vocVal.toFixed(1)} ppm` : "—",
-      valueColor: vocSt.color,
+      range: "< 500 ppm",
       bgColor: "rgba(253, 121, 168, 0.12)",
       iconBg: "rgba(253, 121, 168, 0.15)",
-      statusLabel: vocSt.label,
-      statusColor: vocSt.color,
+      statusLabel: "Ideal",
+      statusColor: "#00B894",
+      valueColor: "#FD79A8",
     },
     {
       id: 8,
       icon: "leaf-outline",
       title: "Air Quality | වායු ගුණත්වය",
       description: "Overall air quality index for storage environment | ගබඩා පරිසරය සඳහා සමස්ත වායු ගුණාත්මක දර්ශකය",
-      value: airSt.label.split("|")[0].trim(),
-      valueColor: airSt.color,
+      range: "Good",
       bgColor: "rgba(0, 206, 201, 0.12)",
       iconBg: "rgba(0, 206, 201, 0.15)",
-      statusLabel: airSt.label,
-      statusColor: airSt.color,
+      statusLabel: "Ideal",
+      statusColor: "#00B894",
+      valueColor: "#00CEC9",
     },
-  ];
-
-  const quickStats = [
-    { label: "Quality Score | ගුණාත්මක ලකුණු", value: qualityScore !== null ? `${qualityScore}%` : "—", icon: "analytics-outline", color: "#4CAF50" },
-    { label: "Active Sensors | සක්‍රිය සංවේදක", value: String(activeCount), icon: "hardware-chip-outline", color: "#2196F3" },
-    { label: "Alerts | ඇඟවීම්", value: String(alertCount), icon: "notifications-outline", color: alertCount > 0 ? "#FF5252" : "#FF9800" },
   ];
 
   return (
@@ -257,34 +188,11 @@ const DashboardContent = () => {
               </TouchableOpacity>
               <View style={styles.headerTextContainer}>
                 <View style={styles.greetingRow}>
-                  <Text style={styles.greetingText}>Welcome Back | ආයුබෝවන්</Text>
-                  <View style={styles.liveBadge}>
-                    <View style={styles.livePulse} />
-                    <Text style={styles.liveText}>LIVE</Text>
-                  </View>
+                  <Text style={styles.greetingText}>Storage Standards | ගබඩා ප්‍රමිතීන්</Text>
                 </View>
                 <Text style={styles.brandText}>Warehouse Quality | ගබඩා ගුණාත්මකභාවය</Text>
               </View>
             </View>
-          </View>
-
-          {/* Quick Stats */}
-          <View style={styles.statsContainer}>
-            {quickStats.map((stat, index) => (
-              <View key={index} style={styles.statCard}>
-                <LinearGradient
-                  colors={[`${stat.color}30`, `${stat.color}10`]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.statIconContainer}
-                >
-                  <Ionicons name={stat.icon} size={20} color="#FFF" />
-                </LinearGradient>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-                <View style={[styles.statIndicator, { backgroundColor: stat.color }]} />
-              </View>
-            ))}
           </View>
         </LinearGradient>
       </View>
@@ -294,15 +202,6 @@ const DashboardContent = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Section Title */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Storage Standards | ගබඩා ප්‍රමිතීන්</Text>
-          <TouchableOpacity style={styles.seeAllButton}>
-            {/* <Text style={styles.seeAllText}>See All | සියල්ල</Text> */}
-            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-
         {standards.map((item) => (
           <TouchableOpacity
             key={item.id}
@@ -340,7 +239,7 @@ const DashboardContent = () => {
                     </View>
                     <View style={styles.valueTag}>
                       <Text style={[styles.value, { color: item.valueColor }]}>
-                        {item.value}
+                        {item.range}
                       </Text>
                     </View>
                   </View>
@@ -353,53 +252,6 @@ const DashboardContent = () => {
             </LinearGradient>
           </TouchableOpacity>
         ))}
-
-        {/* Info Card */}
-        <View style={styles.infoCardWrapper}>
-          <LinearGradient
-            colors={["#E8F5E9", "#C8E6C9", "#A5D6A7"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.infoCard}
-          >
-            {/* Decorative Pattern */}
-            <View style={styles.infoDecor1} />
-            <View style={styles.infoDecor2} />
-
-            <View style={styles.infoMainContent}>
-              <LinearGradient
-                colors={["#4CAF50", "#2E7D32"]}
-                style={styles.infoIconContainer}
-              >
-                <Ionicons name="shield-checkmark" size={30} color="#FFF" />
-              </LinearGradient>
-              <View style={styles.infoContent}>
-                <View style={styles.infoTitleRow}>
-                  <Text style={styles.infoTitle}>Optimal Conditions | ප්‍රශස්ත තත්ත්වයන්</Text>
-                  <View style={styles.checkBadge}>
-                    <Ionicons name="checkmark" size={14} color="#FFF" />
-                  </View>
-                </View>
-                <Text style={styles.infoDescription}>
-                  All storage parameters are within the recommended range for premium cinnamon quality. | සියලුම ගබඩා පරාමිතීන් උසස් කුරුඳු ගුණාත්මකභාවය සඳහා නිර්දේශිත පරාසය තුළ පවතී.
-                </Text>
-              </View>
-            </View>
-
-            {/* Progress Indicator */}
-            <View style={styles.qualityProgress}>
-              <View style={styles.qualityProgressBar}>
-                <LinearGradient
-                  colors={["#4CAF50", "#66BB6A"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.qualityProgressFill, { width: qualityScore !== null ? `${qualityScore}%` : "0%" }]}
-                />
-              </View>
-              <Text style={styles.qualityProgressText}>{qualityScore !== null ? `${qualityScore}%` : "—"} Quality</Text>
-            </View>
-          </LinearGradient>
-        </View>
 
         <View style={styles.bottomSpacing} />
       </ScrollView>

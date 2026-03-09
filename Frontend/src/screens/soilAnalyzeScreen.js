@@ -296,12 +296,96 @@ export default function SoilAnalyzeScreen() {
         return { percentage, status, statusSinhala, statusType, recommendation };
     };
 
+    // Helper function to analyze Temperature
+    const analyzeTemperature = (temp) => {
+        const optimal = 25; // Optimal temperature for cinnamon (20-30°C range)
+        let percentage, status, statusSinhala, statusType, recommendation;
+
+        if (temp >= 20 && temp <= 30) {
+            const distanceFromOptimal = Math.abs(temp - optimal);
+            percentage = Math.round(100 - (distanceFromOptimal / 5) * 10); // 5 is half of 10-degree range
+            status = "Optimal Range";
+            statusSinhala = "ප්‍රශස්ත පරාසය";
+            statusType = "optimal";
+            recommendation = "Temperature is ideal for cinnamon growth";
+        } else if (temp >= 15 && temp < 20) {
+            percentage = 70;
+            status = "Cool";
+            statusSinhala = "තापන අඩු";
+            statusType = "good";
+            recommendation = "Temperature may slow growth slightly";
+        } else if (temp > 30 && temp <= 35) {
+            percentage = 70;
+            status = "Warm";
+            statusSinhala = "තතු";
+            statusType = "good";
+            recommendation = "Ensure adequate irrigation";
+        } else if (temp < 15) {
+            percentage = 30;
+            status = "Too Cold";
+            statusSinhala = "ඉතා තමා";
+            statusType = "warning";
+            recommendation = "Provide frost protection";
+        } else {
+            percentage = 30;
+            status = "Too Hot";
+            statusSinhala = "ඉතා තතු";
+            statusType = "critical";
+            recommendation = "Increase watering and provide shade";
+        }
+
+        return { percentage, status, statusSinhala, statusType, recommendation };
+    };
+
+    // Helper function to analyze Moisture
+    const analyzeMoisture = (moisture) => {
+        const optimal = 70; // Optimal soil moisture percentage
+        let percentage, status, statusSinhala, statusType, recommendation;
+
+        if (moisture >= 60 && moisture <= 80) {
+            const distanceFromOptimal = Math.abs(moisture - optimal);
+            percentage = Math.round(100 - (distanceFromOptimal / 10) * 10); // 10 is half of 20-point range
+            status = "Optimal Level";
+            statusSinhala = "ප්‍රශස්ත මට්ටම";
+            statusType = "optimal";
+            recommendation = "Soil moisture is ideal for cinnamon";
+        } else if (moisture >= 45 && moisture < 60) {
+            percentage = Math.round((moisture / 60) * 70);
+            status = "Dry";
+            statusSinhala = "ශුෂ්ක";
+            statusType = "warning";
+            recommendation = "Increase irrigation frequency";
+        } else if (moisture > 80 && moisture <= 90) {
+            percentage = 75;
+            status = "Wet";
+            statusSinhala = "තෙතමනී";
+            statusType = "good";
+            recommendation = "Monitor for waterlogging";
+        } else if (moisture < 45) {
+            percentage = 25;
+            status = "Very Dry";
+            statusSinhala = "ඉතා ශුෂ්ක";
+            statusType = "critical";
+            recommendation = "Water immediately to prevent stress";
+        } else {
+            percentage = 40;
+            status = "Saturated";
+            statusSinhala = "සම්පූර්ණයි";
+            statusType = "warning";
+            recommendation = "Improve drainage to prevent root rot";
+        }
+
+        return { percentage, status, statusSinhala, statusType, recommendation };
+    };
+
     // Real data from sensor (or default values if not available)
     const N = sensorData?.nitrogen || 0;
     const P = sensorData?.phosphorus || 0;
     const K = sensorData?.potassium || 0;
     const pH = sensorData?.ph || 0;
     const EC = sensorData?.ec || 0;
+    const temperature = sensorData?.temperature || 0;
+    const moisture = sensorData?.moisture || 0;
 
     // Analyze each nutrient with optimal ranges for cinnamon
     const nitrogenAnalysis = analyzeNutrient(N, 100, "Nitrogen"); // Optimal: 100 mg/kg
@@ -309,6 +393,8 @@ export default function SoilAnalyzeScreen() {
     const potassiumAnalysis = analyzeNutrient(K, 120, "Potassium"); // Optimal: 120 mg/kg
     const phAnalysis = analyzePH(pH);
     const ecAnalysis = analyzeEC(EC);
+    const temperatureAnalysis = analyzeTemperature(temperature);
+    const moistureAnalysis = analyzeMoisture(moisture);
 
     const nutrients = [
         {
@@ -341,11 +427,28 @@ export default function SoilAnalyzeScreen() {
             ...ecAnalysis,
             icon: "flash",
         },
+        {
+            label: "Temperature (°C)",
+            labelSinhala: "තාපනය",
+            ...temperatureAnalysis,
+            icon: "thermometer",
+        },
+        {
+            label: "Soil Moisture (%)",
+            labelSinhala: "පස තෙතමනය",
+            ...moistureAnalysis,
+            icon: "water",
+        },
     ];
 
     const overallHealth = Math.round(
         nutrients.reduce((sum, n) => sum + n.percentage, 0) / nutrients.length
     );
+
+    // Calculate summary counts
+    const criticalCount = nutrients.filter(n => n.statusType === 'critical').length;
+    const warningCount = nutrients.filter(n => n.statusType === 'warning').length;
+    const optimalCount = nutrients.filter(n => n.statusType === 'optimal' || n.statusType === 'good').length;
 
     return (
         <View style={styles.container}>
@@ -371,7 +474,7 @@ export default function SoilAnalyzeScreen() {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.greetingText}>Soil Analysis</Text>
-                            <Text style={styles.brandText}>Nutrient Deficit</Text>
+                            <Text style={styles.brandText}>Comprehensive Health</Text>
                         </View>
                         <TouchableOpacity style={styles.menuButton}>
                             <LinearGradient
@@ -412,32 +515,32 @@ export default function SoilAnalyzeScreen() {
                 <View style={styles.summarySection}>
                     <SummaryCard
                         title="Critical"
-                        value="1"
+                        value={criticalCount.toString()}
                         icon="alert-circle"
                         color="#D32F2F"
                         subtitle="Needs action"
                     />
                     <SummaryCard
                         title="Warning"
-                        value="2"
+                        value={warningCount.toString()}
                         icon="alert"
                         color="#F57C00"
                         subtitle="Monitor"
                     />
                     <SummaryCard
-                        title="Optimal"
-                        value="2"
+                        title="Healthy"
+                        value={optimalCount.toString()}
                         icon="check-circle"
                         color="#388E3C"
-                        subtitle="Healthy"
+                        subtitle="Good range"
                     />
                 </View>
 
-                {/* Nutrient Analysis Section */}
+                {/* Soil Analysis Section */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <MaterialCommunityIcons name="chart-bar" size={24} color="#1B5E20" />
-                        <Text style={styles.sectionTitle}>Nutrient Analysis</Text>
+                        <Text style={styles.sectionTitle}>Soil Metrics</Text>
                     </View>
 
                     {nutrients.map((nutrient, index) => (
