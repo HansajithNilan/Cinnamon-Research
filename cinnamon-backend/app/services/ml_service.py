@@ -122,60 +122,85 @@ def analyze_leaf_image(image_bytes):
     }
 
 def analyze_vacant_area(image_bytes):
+    if vacant_model is None:
+        return {
+            "status": "error",
+            "message": "Vacant model not loaded properly."
+        }
+
     img = decode_image_from_bytes(image_bytes)
     if img is None:
-        return {"error": "Invalid image format."}
-    
+        return {
+            "status": "error",
+            "message": "Invalid image format."
+        }
+
     h, w = img.shape[:2]
     total_pixels = h * w
-    
-    # 1. Convert to HSV for brown area detection
-    img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    
-    # 2. Define brown color range (bare soil)
-    lower_brown = np.array([10, 50, 50])
-    upper_brown = np.array([30, 255, 255])
-    mask = cv2.inRange(img_hsv, lower_brown, upper_brown)
 
-    # 3. Morphological operations to clean the mask
-    kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
+    results = vacant_model.predict(img, save=False, conf=0.15, verbose=False)
+    r = results[0]
 
-    # 4. Count distinct vacant spots using contours
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # Filter small contours (noise)
-    min_area = 100 
-    valid_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > min_area]
-    vacant_count = len(valid_contours)
+    has_boxes = r.boxes is not None and len(r.boxes) > 0
+    has_masks = r.masks is not None and r.masks.data is not None and len(r.masks.data) > 0
 
-    # 5. Count vacant pixels and calculate area
-    vacant_pixels = int(cv2.countNonZero(mask))
-    pixel_area_sqm = (METERS_PER_PIXEL ** 2)
+    if not has_masks and not has_boxes:
+        return {
+            "status": "invalid",
+            "message": "No vacant land detected in the uploaded image.",
+            "data": None
+        }
+
+    combined_mask = np.zeros((h, w), dtype=np.uint8)
+
+    if has_masks:
+        for mask_tensor in r.masks.data:
+            mask = mask_tensor.cpu().numpy()
+            mask = (mask > 0.5).astype(np.uint8) * 255
+            mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST)
+            combined_mask = np.maximum(combined_mask, mask)
+
+    elif has_boxes:
+        for box in r.boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            cv2.rectangle(combined_mask, (x1, y1), (x2, y2), 255, -1)
+
+    vacant_pixels = int(cv2.countNonZero(combined_mask))
+
+    if vacant_pixels == 0:
+        return {
+            "status": "invalid",
+            "message": "Model prediction did not produce a usable vacant-area mask.",
+            "data": None
+        }
+
+    pixel_area_sqm = METERS_PER_PIXEL ** 2
     vacant_area_sqm = vacant_pixels * pixel_area_sqm
-
-    # 6. Calculate new trees and forecasted yield
-    new_trees = int(np.floor(vacant_area_sqm / TREE_AREA_SQM))
-    forecast_yield = new_trees * YIELD_PER_TREE_KG
-    
-    # 7. Calculate vacant percentage
+    required_plants = int(np.floor(vacant_area_sqm / TREE_AREA_SQM))
+    yield_forecast = required_plants * YIELD_PER_TREE_KG
+    estimated_cost = required_plants * 120
     vacant_percentage = (vacant_pixels / total_pixels) * 100
 
-    # 8. Create visualization overlay (Red mask for vacant areas)
+    # red mask overlay
     res_img = img.copy()
-    overlay = res_img.copy()
-    overlay[mask > 0] = [0, 0, 255]  # Red in BGR (since img is BGR from decode_image_from_bytes)
+    overlay = img.copy()
+    overlay[combined_mask > 0] = [0, 0, 255]  # Red in BGR
     res_img = cv2.addWeighted(res_img, 0.7, overlay, 0.3, 0)
 
     base64_img = encode_image_to_base64(res_img)
-    
+
     return {
-        "vacant_count": vacant_count,
-        "vacant_pixels": vacant_pixels,
-        "vacant_percentage": round(vacant_percentage, 2),
-        "vacant_area_sqm": round(vacant_area_sqm, 2),
-        "required_plants": new_trees,
-        "estimated_cost": round(new_trees * 120, 2),
-        "yield_forecast": round(forecast_yield, 2),
-        "processed_image_base64": f"data:image/jpeg;base64,{base64_img}"
+        "status": "success",
+        "message": "Vacant area detected successfully.",
+        "data": {
+            "vacant_pixels": vacant_pixels,
+            "vacant_percentage": round(vacant_percentage, 2),
+            "vacant_area_sqm": round(vacant_area_sqm, 2),
+            "required_plants": required_plants,
+            "estimated_cost": round(estimated_cost, 2),
+            "yield_forecast": round(yield_forecast, 2),
+            "spacing_m": f"{ROW_SPACING_M}m x {PLANT_SPACING_M}m",
+            "tree_area_sqm": round(TREE_AREA_SQM, 2),
+            "processed_image_base64": f"data:image/jpeg;base64,{base64_img}"
+        }
     }

@@ -42,17 +42,25 @@ async def analyze_vacant(file: UploadFile = File(...)):
         image_bytes = await file.read()
         analysis_result = analyze_vacant_area(image_bytes)
         
-        if "error" in analysis_result:
-            print("❌ error: Vacant Model not working properly.")
-            raise HTTPException(status_code=500, detail=analysis_result["error"])
+        status = analysis_result.get("status")
+
+        if status == "error":
+            print(f"❌ Error: {analysis_result.get('message')}")
+            # If the model itself crashes or is missing
+            raise HTTPException(status_code=500, detail=analysis_result.get("message"))
             
-        print("🎯 Vacant Area Scan Done! Result send to the App.")
+        elif status == "invalid":
+            print(f"ℹ️ Invalid Image: {analysis_result.get('message')}")
+            
+        else:
+            print("🎯 Vacant Area Scan Done! Result send to the App.")
+            
         print("="*40)
         
-        return {
-            "status": "success",
-            "data": analysis_result
-        }
+        return analysis_result
+    except HTTPException:
+        # Re-raise HTTP exceptions to avoid catching them in the general exception block
+        raise
     except Exception as e:
-        print(f"❌ Error : {e}")
+        print(f"❌ Exception: {e}")
         raise HTTPException(status_code=500, detail=str(e))

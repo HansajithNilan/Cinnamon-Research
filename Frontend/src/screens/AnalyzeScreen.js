@@ -106,8 +106,10 @@ const AnalyzeScreen = () => {
   const [showReport, setShowReport] = useState(false);
 
   const [detectionResults, setDetectionResults] = useState({
-    vacantAreaCount: "0",
-    landVacantAreaSize: "0%",
+    vacantPixels: "0",
+    vacantAreaSqm: "0.00",
+    spacing: "1.2m x 0.9m",
+    treeAreaSqm: "1.08",
   });
   const [vacantFillingData, setVacantFillingData] = useState({
     vacantAreaMeasurement: "0.00",
@@ -257,29 +259,41 @@ const AnalyzeScreen = () => {
 
       const result = await response.json();
 
-      if (response.ok && result.status === "success") {
-        setDetectionResults({
-          vacantAreaCount: result.data.vacant_count.toString(),
-          landVacantAreaSize: `${result.data.vacant_percentage}%`,
-        });
+      setIsDetecting(false);
 
-        setVacantFillingData({
-          vacantAreaMeasurement: result.data.vacant_area_sqm.toString(),
-          vacantFillingPlantsCost: result.data.estimated_cost.toString(),
-          fillingPlantCount: result.data.required_plants.toString(),
-          yieldForecasting: `${result.data.yield_forecast} kg`,
-        });
+      if (response.ok) {
+        if (result.status === "success" && result.data) {
+          setDetectionResults({
+            vacantPixels: result.data.vacant_pixels.toString(),
+            vacantAreaSqm: result.data.vacant_area_sqm.toString(),
+            spacing: result.data.spacing_m || "1.2m x 0.9m",
+            treeAreaSqm: result.data.tree_area_sqm?.toString() || "1.08",
+          });
 
-        setSelectedImage(result.data.processed_image_base64);
-        setIsDetecting(false);
-        setShowResults(true);
+          setVacantFillingData({
+            vacantAreaMeasurement: result.data.vacant_area_sqm.toString(),
+            vacantFillingPlantsCost: result.data.estimated_cost.toString(),
+            fillingPlantCount: result.data.required_plants.toString(),
+            yieldForecasting: `${result.data.yield_forecast} kg`,
+          });
+
+          setSelectedImage(result.data.processed_image_base64);
+          setShowResults(true);
+        } else if (result.status === "invalid") {
+          Alert.alert("Invalid Image", result.message || "No vacant land detected in the uploaded image.");
+          setSelectedImage(null);
+        } else {
+          Alert.alert("Analysis Error", result.message || "An error occurred during analysis.");
+          setSelectedImage(null);
+        }
       } else {
-        setIsDetecting(false);
         Alert.alert("Analysis Failed", result.detail || "Could not analyze the image.");
+        setSelectedImage(null);
       }
     } catch (error) {
       setIsDetecting(false);
-      Alert.alert("Error", "Could not connect to the backend server. Check your IP.");
+      Alert.alert("Connection Error", "Could not connect to the backend server. Check your IP.");
+      setSelectedImage(null);
     }
   };
 
@@ -309,13 +323,13 @@ const AnalyzeScreen = () => {
 
       setIsDetecting(true); // Using isDetecting as a loading state for saving
 
-      const agronomyRecs = `Your land has ${detectionResults.vacantAreaCount} vacant areas. We recommend planting ${vacantFillingData.fillingPlantCount} high-quality seedlings. Projected long-term yield: ${vacantFillingData.yieldForecasting}.`;
+      const agronomyRecs = `Your land has ${detectionResults.vacantAreaSqm} sqm of vacant area. We recommend planting ${vacantFillingData.fillingPlantCount} high-quality seedlings based on ${detectionResults.spacing} spacing. Projected long-term yield: ${vacantFillingData.yieldForecasting}.`;
 
       const analysisData = {
         userId: user.uid,
         image: selectedImage,
-        vacantSpotsCount: detectionResults.vacantAreaCount,
-        vacantRatio: detectionResults.landVacantAreaSize,
+        vacantPixels: detectionResults.vacantPixels,
+        vacantAreaSqm: detectionResults.vacantAreaSqm,
         analysisDate: new Date().toLocaleDateString(),
         landCoverage: `${vacantFillingData.vacantAreaMeasurement} sqm`,
         agronomyRecommendations: agronomyRecs,
@@ -378,13 +392,14 @@ const AnalyzeScreen = () => {
           </View>
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.reportRow}><Text style={styles.reportLabel}>Analysis Date</Text><Text style={styles.reportValue}>{new Date().toLocaleDateString()}</Text></View>
-            <View style={styles.reportRow}><Text style={styles.reportLabel}>Total Vacant Spots</Text><Text style={styles.reportValue}>{detectionResults.vacantAreaCount}</Text></View>
-            <View style={styles.reportRow}><Text style={styles.reportLabel}>Vacant Ratio</Text><Text style={styles.reportValue}>{detectionResults.landVacantAreaSize}</Text></View>
-            <View style={styles.reportRow}><Text style={styles.reportLabel}>Land Coverage</Text><Text style={styles.reportValue}>{vacantFillingData.vacantAreaMeasurement} sqm</Text></View>
+            <View style={styles.reportRow}><Text style={styles.reportLabel}>Vacant Pixels</Text><Text style={styles.reportValue}>{detectionResults.vacantPixels}</Text></View>
+            <View style={styles.reportRow}><Text style={styles.reportLabel}>Vacant Area</Text><Text style={styles.reportValue}>{detectionResults.vacantAreaSqm} sqm</Text></View>
+            <View style={styles.reportRow}><Text style={styles.reportLabel}>Spacing</Text><Text style={styles.reportValue}>{detectionResults.spacing}</Text></View>
+            <View style={styles.reportRow}><Text style={styles.reportLabel}>1 Tree Area</Text><Text style={styles.reportValue}>{detectionResults.treeAreaSqm} sqm</Text></View>
             <View style={styles.reportDivider} />
             <Text style={styles.reportSubTitle}>Agronomy Recommendations</Text>
             <Text style={styles.reportText}>
-              Your land has {detectionResults.vacantAreaCount} vacant areas.
+              Your land has {detectionResults.vacantAreaSqm} sqm of vacant area.
               We recommend planting {vacantFillingData.fillingPlantCount} high-quality seedlings.
               Projected long-term yield: {vacantFillingData.yieldForecasting}.
             </Text>
@@ -493,8 +508,8 @@ const AnalyzeScreen = () => {
         <View style={styles.card}>
           <View style={styles.sectionTitleRow}><Ionicons name="information-circle" size={20} color={colors.primary} /><Text style={styles.cardTitle}>Analysis Summary</Text></View>
           <View style={styles.statsGrid}>
-            <View style={styles.statBox}><Text style={styles.statValue}>{detectionResults.vacantAreaCount}</Text><Text style={styles.statLabel}>Vacant Spots</Text></View>
-            <View style={styles.statBox}><Text style={styles.statValue}>{detectionResults.landVacantAreaSize}</Text><Text style={styles.statLabel}>Vacant Ratio</Text></View>
+            <View style={styles.statBox}><Text style={styles.statValue}>{detectionResults.vacantPixels}</Text><Text style={styles.statLabel}>Vacant Pixels</Text></View>
+            <View style={styles.statBox}><Text style={styles.statValue}>{detectionResults.vacantAreaSqm}</Text><Text style={styles.statLabel}>Area (sqm)</Text></View>
           </View>
           <TouchableOpacity style={styles.textButton} onPress={() => setShowReport(true)}><Text style={styles.textButtonLabel}>View Detailed Report</Text><Ionicons name="chevron-forward" size={16} color={colors.primary} /></TouchableOpacity>
         </View>
@@ -533,13 +548,13 @@ const styles = StyleSheet.create({
   cardNoPadding: { backgroundColor: colors.white, borderRadius: 20, marginBottom: 20, elevation: 3, overflow: 'hidden' },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 16, gap: 10 },
   cardTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
-  uploadContainer: { marginBottom: 30 },
-  uploadBox: { backgroundColor: colors.white, borderRadius: 24, minHeight: 300, justifyContent: "center", alignItems: "center", borderWidth: 2, borderStyle: "dashed", borderColor: colors.primary, overflow: 'hidden' },
+  uploadContainer: { width: "100%", marginBottom: 30 },
+  uploadBox: { width: "100%", backgroundColor: colors.white, borderRadius: 24, minHeight: 300, justifyContent: "center", alignItems: "center", borderWidth: 2, borderStyle: "dashed", borderColor: colors.primary, overflow: 'hidden' },
   uploadPlaceholder: { alignItems: 'center', padding: 20 },
   iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(76, 175, 80, 0.1)", alignItems: "center", justifyContent: "center", marginBottom: 16 },
   uploadTitle: { fontSize: 20, fontWeight: "700", color: colors.text, marginBottom: 8 },
   previewImage: { width: "100%", height: 300, resizeMode: "cover" },
-  mainButton: { borderRadius: 16, overflow: 'hidden', elevation: 4 },
+  mainButton: { width: "100%", borderRadius: 16, overflow: 'hidden', elevation: 4 },
   disabledButton: { opacity: 0.8 },
   buttonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 12 },
   mainButtonText: { color: colors.white, fontSize: 18, fontWeight: "bold" },
