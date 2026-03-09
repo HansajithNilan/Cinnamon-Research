@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../styles/colors";
 
-const PreventionGuideScreen = ({ navigation }) => {
+const PreventionGuideScreen = ({ navigation, route }) => {
   const [expandedSections, setExpandedSections] = useState({
     immediateActions: true,
   });
@@ -23,6 +23,19 @@ const PreventionGuideScreen = ({ navigation }) => {
       [section]: !prev[section],
     }));
   };
+
+  useEffect(() => {
+    if (route.params?.riskLevel) {
+      const level = route.params.riskLevel;
+      if (level === "CRITICAL") {
+        setExpandedSections({ immediateActions: true });
+      } else if (level === "HIGH RISK") {
+        setExpandedSections({ shortTerm: true });
+      } else if (level === "LOW RISK" || level === "SAFE") {
+        setExpandedSections({ nurseryPractices: true });
+      }
+    }
+  }, [route.params?.riskLevel]);
 
   const handleNewScan = () => {
     navigation.navigate("Image");
