@@ -17,11 +17,11 @@ const firebaseConfig = {
 const app = getApps().find(a => a.options.projectId === firebaseConfig.projectId) ||
     (getApps().length === 0 ? initializeApp(firebaseConfig) : initializeApp(firebaseConfig, 'vacant-app'));
 
-// Initialize Firebase Auth with Persistence safely
+// Initialize Firebase Auth with Persistence
 let auth;
-try {
+if (getApps().length > 0) {
     auth = getAuth(app);
-} catch (e) {
+} else {
     auth = initializeAuth(app, {
         persistence: getReactNativePersistence(AsyncStorage)
     });

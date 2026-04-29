@@ -29,6 +29,61 @@ import {
   onSnapshot,
   doc
 } from "firebase/firestore";
+import { getAIResponseForRecords } from "../services/geminiService";
+
+// Optimized Message Component
+const MessageItem = React.memo(({ item, colors }) => {
+  return (
+    <View
+      style={[
+        styles.messageContainer,
+        item.isUser ? styles.userMessageContainer : styles.botMessageContainer,
+      ]}
+    >
+      {!item.isUser && (
+        <View style={styles.avatarContainer}>
+          <LinearGradient
+            colors={[colors.primary, colors.primaryDark]}
+            style={styles.avatarGradient}
+          >
+            <Ionicons name="leaf" size={14} color={colors.white} />
+          </LinearGradient>
+        </View>
+      )}
+
+      <View
+        style={[
+          styles.messageBubble,
+          item.isUser ? styles.userBubble : styles.botBubble,
+        ]}
+      >
+        {item.image ? (
+          <Image
+            source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+            style={styles.messageImage}
+          />
+        ) : (
+          <Text
+            style={[
+              styles.messageText,
+              item.isUser ? styles.userMessageText : styles.botMessageText,
+            ]}
+          >
+            {item.text}
+          </Text>
+        )}
+        <Text
+          style={[
+            styles.timestamp,
+            item.isUser ? styles.userTimestamp : styles.botTimestamp,
+          ]}
+        >
+          {item.timestamp}
+        </Text>
+      </View>
+    </View>
+  );
+});
 
 const ChatScreen = () => {
   const navigation = useNavigation();
@@ -55,7 +110,7 @@ const ChatScreen = () => {
         const q = query(
           collection(db, "chats"),
           where("userId", "==", user.uid),
-          orderBy("createdAt", "asc")
+          orderBy("createdAt", "desc")
         );
 
         return onSnapshot(q, (snapshot) => {
@@ -90,7 +145,7 @@ const ChatScreen = () => {
         chatMessages.sort((a, b) => {
           const t1 = a.createdAt?.seconds || 0;
           const t2 = b.createdAt?.seconds || 0;
-          return t1 - t2;
+          return t2 - t1;
         });
         updateMessagesState(chatMessages);
       });
@@ -184,6 +239,51 @@ const ChatScreen = () => {
     }
   };
 
+  const fetchLatestTwoAnalyses = async () => {
+    const user = auth.currentUser;
+    if (!user) return [];
+    try {
+      const q = query(
+        collection(db, "analyses"),
+        where("userId", "==", user.uid),
+        orderBy("timestamp", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      const analyses = [];
+      querySnapshot.forEach((doc) => {
+        if (analyses.length < 2) {
+          analyses.push(doc.data());
+        }
+      });
+      return analyses;
+    } catch (error) {
+      console.warn("Index not ready for analyses, falling back to manual sort.");
+      try {
+        const qBasic = query(
+          collection(db, "analyses"),
+          where("userId", "==", user.uid)
+        );
+        const querySnapshot = await getDocs(qBasic);
+        const analyses = [];
+        querySnapshot.forEach((doc) => {
+          analyses.push(doc.data());
+        });
+
+        // Sort manually by timestamp (descending)
+        analyses.sort((a, b) => {
+          const t1 = a.timestamp?.seconds || 0;
+          const t2 = b.timestamp?.seconds || 0;
+          return t2 - t1;
+        });
+
+        return analyses.slice(0, 2);
+      } catch (innerError) {
+        console.error("Manual sort fallback failed: ", innerError);
+        return [];
+      }
+    }
+  };
+
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -217,7 +317,7 @@ const ChatScreen = () => {
           minute: "2-digit",
         }),
       };
-      setMessages((prev) => [...prev, imageMessage]);
+      setMessages((prev) => [imageMessage, ...prev]);
 
       setTimeout(() => {
         const botMessage = {
@@ -229,7 +329,7 @@ const ChatScreen = () => {
             minute: "2-digit",
           }),
         };
-        setMessages((prev) => [...prev, botMessage]);
+        setMessages((prev) => [botMessage, ...prev]);
       }, 1000);
     }
   };
@@ -258,84 +358,34 @@ const ChatScreen = () => {
       const dates = parseDatesFromText(userMessageText);
       const lowerInput = userMessageText.toLowerCase();
       const isComparison = lowerInput.includes("comparison") || lowerInput.includes("compare");
+      const isRecordRequest = lowerInput.includes("record") || lowerInput.includes("history") || lowerInput.includes("detail") || lowerInput.includes("analysis");
+
+      let aiResponseText = "";
 
       if (dates.length >= 2 && isComparison) {
-        const date1 = dates[0];
-        const date2 = dates[1];
-
-        const details1 = await fetchLandDetailsFromDate(date1);
-        const details2 = await fetchLandDetailsFromDate(date2);
-
-        let comparisonReply = `Comparison between ${date1} and ${date2}:\n\n`;
-
-        if (details1.length > 0 && details2.length > 0) {
-          // Take the first record for simplicity in comparison
-          const rec1 = details1[0];
-          const rec2 = details2[0];
-
-          const diffArea = (parseFloat(rec1.vacantArea) - parseFloat(rec2.vacantArea)).toFixed(2);
-          const diffPlants = parseInt(rec1.requiredPlants) - parseInt(rec2.requiredPlants);
-
-          comparisonReply += `• Area Change: ${diffArea > 0 ? '+' : ''}${diffArea} Sqm\n`;
-          comparisonReply += `• Plant Count Change: ${diffPlants > 0 ? '+' : ''}${diffPlants}\n`;
-          comparisonReply += `• Recent Status: ${date1} had ${rec1.vacantSpotsCount} spots vs ${date2} with ${rec2.vacantSpotsCount} spots.\n\n`;
-
-          if (diffArea < 0) {
-            comparisonReply += "Great! Your vacant area is decreasing. 🌱";
-          } else if (diffArea > 0) {
-            comparisonReply += "Notice: Vacant area has increased between these dates. ⚠️";
-          } else {
-            comparisonReply += "No significant change in vacant area detected.";
-          }
-        } else {
-          comparisonReply = `I found records for ${dates.join(", ")} but couldn't get enough data to compare. Make sure both dates have saved analyses.`;
-        }
-
-        await addDoc(collection(db, "chats"), {
-          userId: user.uid,
-          text: comparisonReply,
-          isUser: false,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          createdAt: serverTimestamp(),
-        });
-
+        const details1 = await fetchLandDetailsFromDate(dates[0]);
+        const details2 = await fetchLandDetailsFromDate(dates[1]);
+        const combined = [...(details1 || []), ...(details2 || [])];
+        aiResponseText = await getAIResponseForRecords(combined, userMessageText);
+      } else if (isComparison || (isRecordRequest && dates.length === 0)) {
+        const latestRecords = await fetchLatestTwoAnalyses();
+        aiResponseText = await getAIResponseForRecords(latestRecords, userMessageText);
       } else if (dates.length > 0) {
-        const searchedDate = dates[0];
-        const details = await fetchLandDetailsFromDate(searchedDate);
-        let botReplyText = "";
-        if (details && details.length > 0) {
-          botReplyText = `I found ${details.length} analysis record(s) for ${searchedDate}:\n\n`;
-          details.forEach((item, index) => {
-            botReplyText += `Record ${index + 1}:\n• Vacant Spots: ${item.vacantSpotsCount}\n• Vacant Area: ${item.vacantArea}\n• Plants Needed: ${item.requiredPlants}\n• Estimated Cost: Rs ${item.totalCost}\n\n`;
-          });
-        } else {
-          botReplyText = `I couldn't find any analysis records for ${searchedDate}. Please check if you added land details on that day.`;
-        }
-        await addDoc(collection(db, "chats"), {
-          userId: user.uid,
-          text: botReplyText,
-          isUser: false,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          createdAt: serverTimestamp(),
-        });
-      } else if (lowerInput.includes("hello") || lowerInput.includes("hi")) {
-        await addDoc(collection(db, "chats"), {
-          userId: user.uid,
-          text: "Hello! How can I help you today? You can ask for land details by date.",
-          isUser: false,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          createdAt: serverTimestamp(),
-        });
+        const details = await fetchLandDetailsFromDate(dates[0]);
+        aiResponseText = await getAIResponseForRecords(details, userMessageText);
       } else {
-        setTimeout(async () => {
-          await addDoc(collection(db, "chats"), {
-            userId: user.uid,
-            text: "I can help you retrieve your land analysis history. Try asking: 'give me 2026 march 7 records'",
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            createdAt: serverTimestamp(),
-          });
-        }, 1000);
+        // General query or greeting - still handle via AI
+        aiResponseText = await getAIResponseForRecords([], userMessageText);
+      }
+
+      if (aiResponseText) {
+        await addDoc(collection(db, "chats"), {
+          userId: user.uid,
+          text: aiResponseText,
+          isUser: false,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          createdAt: serverTimestamp(),
+        });
       }
     } catch (error) {
       console.error("Chat Error: ", error);
@@ -343,58 +393,7 @@ const ChatScreen = () => {
     }
   };
 
-  const renderMessage = ({ item }) => {
-    return (
-      <View
-        style={[
-          styles.messageContainer,
-          item.isUser ? styles.userMessageContainer : styles.botMessageContainer,
-        ]}
-      >
-        {!item.isUser && (
-          <View style={styles.avatarContainer}>
-            <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
-              style={styles.avatarGradient}
-            >
-              <Ionicons name="leaf" size={14} color={colors.white} />
-            </LinearGradient>
-          </View>
-        )}
-
-        <View
-          style={[
-            styles.messageBubble,
-            item.isUser ? styles.userBubble : styles.botBubble,
-          ]}
-        >
-          {item.image ? (
-            <Image
-              source={typeof item.image === 'string' ? { uri: item.image } : item.image}
-              style={styles.messageImage}
-            />
-          ) : (
-            <Text
-              style={[
-                styles.messageText,
-                item.isUser ? styles.userMessageText : styles.botMessageText,
-              ]}
-            >
-              {item.text}
-            </Text>
-          )}
-          <Text
-            style={[
-              styles.timestamp,
-              item.isUser ? styles.userTimestamp : styles.botTimestamp,
-            ]}
-          >
-            {item.timestamp}
-          </Text>
-        </View>
-      </View>
-    );
-  };
+  // Removed local renderMessage to use memoized MessageItem above
 
   return (
     <KeyboardAvoidingView
@@ -428,14 +427,16 @@ const ChatScreen = () => {
 
       <FlatList
         ref={flatListRef}
+        inverted
         data={messages}
-        renderItem={renderMessage}
+        renderItem={({ item }) => <MessageItem item={item} colors={colors} />}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messageList}
         showsVerticalScrollIndicator={false}
-        onContentSizeChange={() =>
-          flatListRef.current?.scrollToEnd({ animated: true })
-        }
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
       />
 
       {/* Input Area */}
@@ -533,7 +534,7 @@ const styles = StyleSheet.create({
   },
   messageList: {
     padding: 20,
-    paddingBottom: 20,
+    paddingTop: 20, // With inverted, paddingTop is actually at the bottom near input
   },
   messageContainer: {
     marginBottom: 16,

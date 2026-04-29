@@ -508,7 +508,7 @@ const AnalyzeScreen = () => {
         <View style={styles.card}>
           <View style={styles.sectionTitleRow}><Ionicons name="information-circle" size={20} color={colors.primary} /><Text style={styles.cardTitle}>Analysis Summary</Text></View>
           <View style={styles.statsGrid}>
-            <View style={styles.statBox}><Text style={styles.statValue}>{detectionResults.vacantPixels}</Text><Text style={styles.statLabel}>Vacant Pixels</Text></View>
+            {/* <View style={styles.statBox}><Text style={styles.statValue}>{detectionResults.vacantPixels}</Text><Text style={styles.statLabel}>Vacant Pixels</Text></View> */}
             <View style={styles.statBox}><Text style={styles.statValue}>{detectionResults.vacantAreaSqm}</Text><Text style={styles.statLabel}>Area (sqm)</Text></View>
           </View>
           <TouchableOpacity style={styles.textButton} onPress={() => setShowReport(true)}><Text style={styles.textButtonLabel}>View Detailed Report</Text><Ionicons name="chevron-forward" size={16} color={colors.primary} /></TouchableOpacity>
@@ -524,7 +524,7 @@ const AnalyzeScreen = () => {
       <ScrollView contentContainerStyle={styles.centerContent} showsVerticalScrollIndicator={false}>
         <View style={styles.uploadContainer}>
           <TouchableOpacity style={styles.uploadBox} onPress={pickImage} activeOpacity={0.7}>
-            {selectedImage ? <Image source={{ uri: selectedImage }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><View style={styles.iconCircle}><Ionicons name="cloud-upload" size={40} color={colors.primary} /></View><Text style={styles.uploadTitle}>Upload Satellite Image</Text></View>}
+            {selectedImage ? <Image source={{ uri: selectedImage }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><View style={styles.iconCircle}><Ionicons name="cloud-upload" size={40} color={colors.primary} /></View><Text style={styles.uploadTitle}>Upload Cinnamon Land Image</Text></View>}
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={[styles.mainButton, !selectedImage && styles.disabledButton]} onPress={handleDetect} disabled={!selectedImage || isDetecting}>
