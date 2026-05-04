@@ -827,6 +827,27 @@ const SuggestionsScreen = ({ navigation }) => {
                     <Text style={styles.aiSectionText}>
                       {recommendation.consequence}
                     </Text>
+                    {csvActionPlan &&
+                      csvActionPlan.reason_of_risk &&
+                      csvActionPlan.reason_of_risk !== "no" && (
+                        <View style={{ marginTop: 12 }}>
+                          <Text
+                            style={[
+                              styles.aiSectionText,
+                              {
+                                fontWeight: "600",
+                                color: ps.color,
+                                marginBottom: 4,
+                              },
+                            ]}
+                          >
+                            Reasons of Risk:
+                          </Text>
+                          <Text style={styles.aiSectionText}>
+                            {csvActionPlan.reason_of_risk}
+                          </Text>
+                        </View>
+                      )}
                   </View>
                 </View>
 

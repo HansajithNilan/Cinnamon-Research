@@ -465,8 +465,8 @@ const SensorScreen = ({ navigation }) => {
       icon: "shield-checkmark-outline",
       title: "Motion | චලනය",
       value:
-        motionDetected === null
-          ? "--"
+        motionDetected === false
+          ? "Detected"
           : motionDetected
           ? "Detected | හඳුනාගත්"
           : "Clear | පැහැදිලි",
