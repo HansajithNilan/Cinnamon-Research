@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const API_BASE_URL = 'https://smartcinnamon-api-94717x.azurewebsites.net';
 
+
 /**
  * Get fertilizer recommendations based on soil parameters
  * @param {Object} sensorData - Soil sensor data

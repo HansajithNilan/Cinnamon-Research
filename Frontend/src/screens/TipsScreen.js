@@ -26,10 +26,10 @@ const { width } = Dimensions.get("window");
 
 // Fertilizer prices in LKR per kg (update these with current market prices)
 const FERTILIZER_PRICES = {
-  Urea: 150,      // Rs. 150 per kg
-  TSP: 200,       // Rs. 200 per kg
-  MOP: 180,       // Rs. 180 per kg
-  Compost: 50,    // Rs. 50 per kg
+  Urea: 220,      // Rs. 220 per kg
+  TSP: 300,       // Rs. 300 per kg
+  MOP: 260,       // Rs. 260 per kg
+  Compost: 60,    // Rs. 60 per kg
 };
 
 // Function to calculate total cost per perch

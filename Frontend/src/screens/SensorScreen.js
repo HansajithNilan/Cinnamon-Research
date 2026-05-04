@@ -23,7 +23,7 @@ import {
   getMotionStatus,
   getAirQualityStatus,
 } from "../config/soil/warehouseThresholds";
-import { ref, onValue, off } from "firebase/database";
+import { ref, onValue } from "firebase/database";
 import { database as warehouseDb } from "../config/warehouse/firebase";
 
 const { width } = Dimensions.get("window");
@@ -33,79 +33,177 @@ const DEVICE_ID = "249627E81F84";
 
 function formatTimeAgo(dateTimeStr) {
   if (!dateTimeStr) return "—";
+
   try {
-    // ESP32 sends local time (GMT+5:30) — append offset so JS parses correctly
     const [datePart, timePart] = dateTimeStr.split(" ");
     const past = new Date(`${datePart}T${timePart}+05:30`);
     const diffMs = Date.now() - past.getTime();
+
     if (diffMs < 0) return "just now";
+
     const sec = Math.floor(diffMs / 1000);
     const min = Math.floor(sec / 60);
     const hr = Math.floor(min / 60);
     const days = Math.floor(hr / 24);
+
     if (sec < 60) return `${sec}s ago | තත්ප ${sec}කට පෙර`;
     if (min < 60) return `${min} min ago | මිනිත්තු ${min}කට පෙර`;
     if (hr < 24) return `${hr} hr ago | පැය ${hr}කට පෙර`;
-    if (days === 1) return `1 day ago | දිනයකට පෙර`;
+    if (days === 1) return "1 day ago | දිනයකට පෙර";
+
     return `${days} days ago | දින ${days}කට පෙර`;
   } catch {
     return dateTimeStr;
   }
 }
 
-// Fetch the latest entry from a date-partitioned path
-function subscribeLatest(path, callback) {
-  const dbRef = ref(warehouseDb, path);
-  console.log("🔗 Subscribing to:", path);
-  // Listen to the whole category node; we pick the last date and last timestamp
-  const listener = onValue(dbRef, (snap) => {
-    const data = snap.val();
-    console.log(`📦 Data from ${path}:`, data);
-    if (!data) { 
-      console.warn(`⚠️  No data at ${path}`);
-      callback(null); 
-      return; 
-    }
+function parseSensorDateTime(dateTimeStr) {
+  if (!dateTimeStr) return null;
 
-    const dates = Object.keys(data).sort();
-    const latestDate = dates[dates.length - 1];
-    const timestamps = Object.keys(data[latestDate]).sort((a, b) => Number(a) - Number(b));
-    const latestTs = timestamps[timestamps.length - 1];
-    const entry = data[latestDate][latestTs];
-    console.log(`✅ Latest from ${path} (${latestDate}@${latestTs}):`, entry);
-    callback(entry);
-  }, (error) => {
-    console.error(`❌ Firebase error at ${path}:`, error);
-    callback(null);
-  });
-
-  return () => off(dbRef, "value", listener);
+  try {
+    const [datePart, timePart] = dateTimeStr.split(" ");
+    return new Date(`${datePart}T${timePart}+05:30`).getTime();
+  } catch {
+    return null;
+  }
 }
 
-// ─── Component ─────────────────────────────────────────────────────────────────
+function getTodaySriLankaDate() {
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Colombo",
+  });
+}
+
+function buildDateTimeFromCurrent(current) {
+  if (!current) return null;
+
+  if (current.date_time) {
+    return current.date_time;
+  }
+
+  if (current.date && current.time) {
+    return `${current.date} ${current.time}`;
+  }
+
+  if (current.last_update) {
+    return `${getTodaySriLankaDate()} ${current.last_update}`;
+  }
+
+  return null;
+}
+
+function normalizeBoolean(value) {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0) return false;
+
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase().trim();
+
+    if (
+      normalized === "true" ||
+      normalized === "yes" ||
+      normalized === "detected" ||
+      normalized === "motion detected"
+    ) {
+      return true;
+    }
+
+    if (
+      normalized === "false" ||
+      normalized === "no" ||
+      normalized === "clear" ||
+      normalized === "not detected" ||
+      normalized === "no motion"
+    ) {
+      return false;
+    }
+  }
+
+  return null;
+}
+
+function normalizeNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+
+  const numberValue = Number(value);
+
+  return Number.isNaN(numberValue) ? null : numberValue;
+}
+
+function subscribeLatest(path, callback) {
+  const dbRef = ref(warehouseDb, path);
+
+  console.log("🔗 Subscribing to:", path);
+
+  const unsubscribe = onValue(
+    dbRef,
+    (snap) => {
+      const data = snap.val();
+
+      console.log(`📦 Data from ${path}:`, data);
+
+      if (!data) {
+        console.warn(`⚠️ No data at ${path}`);
+        callback(null);
+        return;
+      }
+
+      const dates = Object.keys(data).sort();
+      const latestDate = dates[dates.length - 1];
+
+      if (!data[latestDate]) {
+        callback(null);
+        return;
+      }
+
+      const timestamps = Object.keys(data[latestDate]).sort(
+        (a, b) => Number(a) - Number(b)
+      );
+
+      const latestTs = timestamps[timestamps.length - 1];
+      const entry = data[latestDate][latestTs];
+
+      console.log(`✅ Latest from ${path} (${latestDate}@${latestTs}):`, entry);
+
+      callback(entry);
+    },
+    (error) => {
+      console.error(`❌ Firebase error at ${path}:`, error);
+      callback(null);
+    }
+  );
+
+  return unsubscribe;
+}
+
 const SensorScreen = ({ navigation }) => {
   const [temperature, setTemperature] = useState(null);
   const [humidity, setHumidity] = useState(null);
-  const [airQuality, setAirQuality] = useState(null); // { co2, voc, date_time }
-  const [light, setLight] = useState(null);           // { lux, brightness, date_time }
-  const [motion, setMotion] = useState(null);         // { motion_detected, motion_confidence, date_time }
+  const [airQuality, setAirQuality] = useState(null);
+  const [light, setLight] = useState(null);
+  const [motion, setMotion] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [lastSyncTs, setLastSyncTs] = useState(null); // ms timestamp
+  const [lastSyncTs, setLastSyncTs] = useState(null);
   const [isOnline, setIsOnline] = useState(false);
-  const [dataUpdateCount, setDataUpdateCount] = useState(0); // Track real-time updates
+  const [dataUpdateCount, setDataUpdateCount] = useState(0);
 
   const unsubscribers = useRef([]);
+  const loadedSources = useRef(new Set());
 
-  // Check data freshness every 5 seconds (same logic as SoilDashboard)
   useEffect(() => {
     const check = () => {
       if (lastSyncTs) {
-        const stale = Date.now() - lastSyncTs > 60000; // 1-minute threshold
+        const stale = Date.now() - lastSyncTs > 60000;
         setIsOnline(!stale);
+      } else {
+        setIsOnline(false);
       }
     };
+
     check();
+
     const id = setInterval(check, 5000);
+
     return () => clearInterval(id);
   }, [lastSyncTs]);
 
@@ -117,118 +215,193 @@ const SensorScreen = ({ navigation }) => {
     console.log("  - Temperature:", `${basePath}/temperature_data`);
     console.log("  - Humidity:", `${basePath}/humidity_data`);
     console.log("  - Air Quality:", `${basePath}/air_quality_data`);
-    console.log("  - Light:", `${basePath}/light_data`);
-    console.log("  - Motion:", `${basePath}/readings`);
+    console.log("  - Current for LDR and Motion:", `${basePath}/current`);
 
-    let loadedCount = 0;
     const totalSources = 4;
 
-    // Parse "YYYY-MM-DD HH:MM:SS" from ESP32 into a ms timestamp
-    function parseSensorDateTime(dateTimeStr) {
-      if (!dateTimeStr) return null;
-      try {
-        const [datePart, timePart] = dateTimeStr.split(" ");
-        return new Date(`${datePart}T${timePart}+05:30`).getTime();
-      } catch {
-        return null;
-      }
-    }
+    function markLoaded(sourceName, entry) {
+      loadedSources.current.add(sourceName);
 
-    function markLoaded(entry) {
-      loadedCount++;
-      // Use the actual sensor date_time so freshness reflects real device activity
       if (entry?.date_time) {
         const ts = parseSensorDateTime(entry.date_time);
-        if (ts) setLastSyncTs(ts);
+
+        if (ts) {
+          setLastSyncTs(ts);
+        }
       }
-      if (loadedCount >= totalSources) {
+
+      if (loadedSources.current.size >= totalSources) {
         setLoading(false);
       }
-      // Track real-time updates
-      setDataUpdateCount(prev => prev + 1);
-      console.log(`📊 Data Update Count: ${loadedCount}/${totalSources}`);
+
+      setDataUpdateCount((prev) => prev + 1);
+
+      console.log(
+        `📊 Loaded sources: ${loadedSources.current.size}/${totalSources}`
+      );
     }
 
-    // Temperature
     const unsubTemp = subscribeLatest(`${basePath}/temperature_data`, (entry) => {
-      console.log("🌡️  Temperature:", entry);
+      console.log("🌡️ Temperature:", entry);
       setTemperature(entry);
-      markLoaded(entry);
+      markLoaded("temperature", entry);
     });
 
-    // Humidity
     const unsubHumid = subscribeLatest(`${basePath}/humidity_data`, (entry) => {
       console.log("💧 Humidity:", entry);
       setHumidity(entry);
-      markLoaded(entry);
+      markLoaded("humidity", entry);
     });
 
-    // Air quality (CO2 + VOC)
     const unsubAir = subscribeLatest(`${basePath}/air_quality_data`, (entry) => {
-      console.log("🌫️  Air Quality:", entry);
+      console.log("🌫️ Air Quality:", entry);
       setAirQuality(entry);
-      markLoaded(entry);
+      markLoaded("air", entry);
     });
 
-    // Light
-    const unsubLight = subscribeLatest(`${basePath}/light_data`, (entry) => {
-      console.log("💡 Light:", entry);
-      setLight(entry);
-      markLoaded(entry);
-    });
+    const currentRef = ref(warehouseDb, `${basePath}/current`);
 
-    // Motion — stored under readings/{timestamp} (flat, not date-partitioned)
-    const motionRef = ref(warehouseDb, `${basePath}/readings`);
-    const motionListener = onValue(motionRef, (snap) => {
-      const data = snap.val();
-      console.log("📍 Motion Raw Data:", data);
-      if (!data) { setMotion(null); return; }
-      const keys = Object.keys(data).sort((a, b) => Number(a) - Number(b));
-      const latest = data[keys[keys.length - 1]];
-      console.log("🚨 Motion Latest:", latest);
-      setMotion({
-        motion_detected: latest.motion_detected,
-        motion_confidence: latest.motion_confidence,
-        date_time: latest.date ? `${latest.date} ${latest.time}` : null,
-      });
-    });
+    const unsubCurrent = onValue(
+      currentRef,
+      (snap) => {
+        const current = snap.val();
+
+        console.log("📦 Current Data for LDR and Motion:", current);
+
+        if (!current) {
+          console.warn("⚠️ No current data found");
+
+          setLight(null);
+          setMotion(null);
+
+          markLoaded("current", null);
+          return;
+        }
+
+        const dateTime = buildDateTimeFromCurrent(current);
+
+        const luxValue = normalizeNumber(
+          current.lux ??
+            current.ldr ??
+            current.light ??
+            current.light_intensity ??
+            current.lightIntensity
+        );
+
+        const brightnessValue = normalizeNumber(
+          current.brightness ??
+            current.brightness_percent ??
+            current.brightnessPercent
+        );
+
+        const motionValue =
+          current.motion ?? current.motion_detected ?? current.motionDetected;
+
+        const motionDetected = normalizeBoolean(motionValue);
+
+        setLight({
+          lux: luxValue,
+          brightness: brightnessValue,
+          date_time: dateTime,
+        });
+
+        setMotion({
+          motion_detected: motionDetected,
+          motion_confidence: motionDetected ? 100 : 0,
+          date_time: dateTime,
+        });
+
+        console.log("💡 LDR Data:", {
+          lux: luxValue,
+          brightness: brightnessValue,
+          date_time: dateTime,
+        });
+
+        console.log("🚨 Motion Data:", {
+          motion_detected: motionDetected,
+          date_time: dateTime,
+        });
+
+        markLoaded("current", { date_time: dateTime });
+      },
+      (error) => {
+        console.error("❌ Firebase error at current:", error);
+
+        setLight(null);
+        setMotion(null);
+
+        markLoaded("current", null);
+      }
+    );
 
     unsubscribers.current = [
       unsubTemp,
       unsubHumid,
       unsubAir,
-      unsubLight,
-      () => off(motionRef, "value", motionListener),
+      unsubCurrent,
     ];
 
     return () => {
-      unsubscribers.current.forEach((fn) => fn && fn());
+      unsubscribers.current.forEach((unsubscribe) => {
+        if (typeof unsubscribe === "function") {
+          unsubscribe();
+        }
+      });
     };
   }, []);
 
-  // Log real-time data updates
   useEffect(() => {
     if (temperature || humidity || airQuality || light || motion) {
       console.log("\n🔍 REAL-TIME DATA RECEIVED:");
-      console.log("✅ Temperature:", temperature?.value, "°C @", temperature?.date_time);
-      console.log("✅ Humidity:", humidity?.value, "% @", humidity?.date_time);
-      console.log("✅ Air Quality:", { co2: airQuality?.co2, voc: airQuality?.voc }, "@", airQuality?.date_time);
-      console.log("✅ Light:", light?.lux, "lux @", light?.date_time);
+      console.log(
+        "✅ Temperature:",
+        temperature?.value,
+        "°C @",
+        temperature?.date_time
+      );
+      console.log(
+        "✅ Humidity:",
+        humidity?.value,
+        "% @",
+        humidity?.date_time
+      );
+      console.log(
+        "✅ Air Quality:",
+        {
+          co2: airQuality?.co2,
+          voc: airQuality?.voc,
+        },
+        "@",
+        airQuality?.date_time
+      );
+      console.log("✅ LDR Light:", light?.lux, "lux @", light?.date_time);
+      console.log("✅ Brightness:", light?.brightness, "@", light?.date_time);
       console.log("✅ Motion:", motion?.motion_detected, "@", motion?.date_time);
       console.log("📊 Total Updates:", dataUpdateCount);
-      console.log("⏱️  Last Sync:", lastSyncTs ? new Date(lastSyncTs).toLocaleString() : "Never");
+      console.log(
+        "⏱️ Last Sync:",
+        lastSyncTs ? new Date(lastSyncTs).toLocaleString() : "Never"
+      );
       console.log("🌐 Status:", isOnline ? "🟢 ONLINE" : "🔴 OFFLINE", "\n");
     }
-  }, [temperature, humidity, airQuality, light, motion, dataUpdateCount, isOnline, lastSyncTs]);
+  }, [
+    temperature,
+    humidity,
+    airQuality,
+    light,
+    motion,
+    dataUpdateCount,
+    isOnline,
+    lastSyncTs,
+  ]);
 
-  // Derived values
-  const tempVal = temperature?.value ?? null;
-  const humidVal = humidity?.value ?? null;
-  const co2Val = airQuality?.co2 ?? null;
-  const vocVal = airQuality?.voc ?? null;
-  const luxVal = light?.lux ?? null;
+  const tempVal = normalizeNumber(temperature?.value);
+  const humidVal = normalizeNumber(humidity?.value);
+  const co2Val = normalizeNumber(airQuality?.co2);
+  const vocVal = normalizeNumber(airQuality?.voc);
+  const luxVal = normalizeNumber(light?.lux);
+  const brightnessVal = normalizeNumber(light?.brightness);
   const motionDetected = motion?.motion_detected ?? null;
-  const motionConfidence = motion?.motion_confidence ?? null;
 
   const tempStatus = getTempStatus(tempVal);
   const humidStatus = getHumidityStatus(humidVal);
@@ -266,7 +439,7 @@ const SensorScreen = ({ navigation }) => {
     {
       id: 3,
       icon: "sunny-outline",
-      title: "Light Intensity | ආලෝක තීව්‍රතාවය",
+      title: "LDR Light | ආලෝක සංවේදකය",
       value: luxVal !== null ? Math.round(luxVal).toLocaleString() : "--",
       unit: " lux",
       status: lightStatus.label,
@@ -277,9 +450,26 @@ const SensorScreen = ({ navigation }) => {
     },
     {
       id: 4,
+      icon: "bulb-outline",
+      title: "Brightness | දීප්තිය",
+      value: brightnessVal !== null ? Math.round(brightnessVal).toString() : "--",
+      unit: " %",
+      status: lightStatus.label,
+      statusColor: lightStatus.color,
+      gradient: ["#FDCB6E", "#E17055"],
+      trend: "stable",
+      lastReading: formatTimeAgo(light?.date_time),
+    },
+    {
+      id: 5,
       icon: "shield-checkmark-outline",
-      title: "Pest Control | පළිබෝධ පාලනය",
-      value: motionDetected === null ? "--" : motionDetected ? "Detected | හදුනාගත්" : "Clear | පැහැදිලි",
+      title: "Motion | චලනය",
+      value:
+        motionDetected === null
+          ? "--"
+          : motionDetected
+          ? "Detected | හඳුනාගත්"
+          : "Clear | පැහැදිලි",
       unit: "",
       status: motionStatus.label,
       statusColor: motionStatus.color,
@@ -337,26 +527,41 @@ const SensorScreen = ({ navigation }) => {
     },
   ];
 
-  const activeSensors = sensorData.filter((s) => s.value !== "--").length;
-  const optimalSensors = sensorData.filter((s) => s.statusColor === "#00B894").length;
+  const activeSensors = sensorData.filter((sensor) => sensor.value !== "--").length;
+  const optimalSensors = sensorData.filter(
+    (sensor) => sensor.statusColor === "#00B894"
+  ).length;
 
   const getTrendIcon = () => "remove-outline";
 
   const formatTimestamp = (ts) => {
     if (!ts) return "N/A";
+
     const d = new Date(ts);
+
     if (isNaN(d.getTime())) return "Just now";
-    return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
   };
 
   const formatTimeAgoMs = (ts) => {
     if (!ts) return "Never";
+
     const diff = Date.now() - ts;
+
     if (diff < 0) return "just now";
+
     const sec = Math.floor(diff / 1000);
     const min = Math.floor(sec / 60);
     const hr = Math.floor(min / 60);
     const days = Math.floor(hr / 24);
+
     if (sec < 10) return "just now";
     if (sec < 60) return `${sec} seconds ago`;
     if (min === 1) return "1 minute ago";
@@ -364,6 +569,7 @@ const SensorScreen = ({ navigation }) => {
     if (hr === 1) return "1 hour ago";
     if (hr < 24) return `${hr} hours ago`;
     if (days === 1) return "1 day ago";
+
     return `${days} days ago`;
   };
 
@@ -389,8 +595,11 @@ const SensorScreen = ({ navigation }) => {
               >
                 <Ionicons name="arrow-back" size={24} color={colors.white} />
               </TouchableOpacity>
+
               <View style={{ flex: 1 }}>
-                <Text style={styles.greetingText}>Live Data Feed | සජීවී දත්ත</Text>
+                <Text style={styles.greetingText}>
+                  Live Data Feed | සජීවී දත්ත
+                </Text>
                 <Text style={styles.brandText}>
                   Sensor Monitoring | සංවේදක නිරීක්ෂණය
                 </Text>
@@ -400,23 +609,46 @@ const SensorScreen = ({ navigation }) => {
 
           <View style={styles.summaryContainer}>
             <View style={styles.summaryCard}>
-              <View style={[styles.summaryIconBg, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+              <View
+                style={[
+                  styles.summaryIconBg,
+                  { backgroundColor: "rgba(255,255,255,0.2)" },
+                ]}
+              >
                 <Ionicons name="radio" size={18} color="#FFF" />
               </View>
               <Text style={styles.summaryValue}>{activeSensors}</Text>
               <Text style={styles.summaryLabel}>Active | සක්‍රිය</Text>
             </View>
+
             <View style={styles.summaryCard}>
-              <View style={[styles.summaryIconBg, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+              <View
+                style={[
+                  styles.summaryIconBg,
+                  { backgroundColor: "rgba(255,255,255,0.2)" },
+                ]}
+              >
                 <Ionicons name="checkmark-done" size={18} color="#FFF" />
               </View>
               <Text style={styles.summaryValue}>{optimalSensors}</Text>
               <Text style={styles.summaryLabel}>Optimal | ප්‍රශස්ත</Text>
             </View>
+
             <View style={styles.summaryCard}>
-              <View style={[styles.summaryIconBg, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+              <View
+                style={[
+                  styles.summaryIconBg,
+                  { backgroundColor: "rgba(255,255,255,0.2)" },
+                ]}
+              >
                 <Ionicons
-                  name={loading ? "pulse" : isOnline ? "wifi" : "cloud-offline-outline"}
+                  name={
+                    loading
+                      ? "pulse"
+                      : isOnline
+                      ? "wifi"
+                      : "cloud-offline-outline"
+                  }
                   size={18}
                   color="#FFF"
                 />
@@ -424,9 +656,7 @@ const SensorScreen = ({ navigation }) => {
               <Text style={styles.summaryValue}>
                 {loading ? "..." : isOnline ? "Online" : "Offline"}
               </Text>
-              <Text style={styles.summaryLabel}>
-                Status | තත්ත්වය
-              </Text>
+              <Text style={styles.summaryLabel}>Status | තත්ත්වය</Text>
             </View>
           </View>
         </LinearGradient>
@@ -439,16 +669,32 @@ const SensorScreen = ({ navigation }) => {
       >
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <View style={[styles.liveDot, { backgroundColor: loading ? "#FDCB6E" : "#00B894" }]} />
-            <Text style={styles.sectionTitle}>All Sensors | සියලුම සංවේදක</Text>
+            <View
+              style={[
+                styles.liveDot,
+                { backgroundColor: loading ? "#FDCB6E" : "#00B894" },
+              ]}
+            />
+            <Text style={styles.sectionTitle}>
+              All Sensors | සියලුම සංවේදක
+            </Text>
           </View>
+
           {loading && <ActivityIndicator size="small" color={colors.primary} />}
         </View>
 
-        {/* Real-time Data Status */}
         <View style={styles.realtimeStatus}>
-          <View style={[styles.statusIndicator, { backgroundColor: isOnline ? "#4CAF50" : "#F44336" }]}>
-            <Ionicons name={isOnline ? "checkmark-circle" : "close-circle"} size={14} color="#FFF" />
+          <View
+            style={[
+              styles.statusIndicator,
+              { backgroundColor: isOnline ? "#4CAF50" : "#F44336" },
+            ]}
+          >
+            <Ionicons
+              name={isOnline ? "checkmark-circle" : "close-circle"}
+              size={14}
+              color="#FFF"
+            />
             <Text style={styles.statusText}>
               {isOnline ? "🔴 Live Data" : "⚫ No Data"} • Updates: {dataUpdateCount}
             </Text>
@@ -475,9 +721,19 @@ const SensorScreen = ({ navigation }) => {
                   >
                     <View style={styles.cardHeaderContent}>
                       <View style={styles.iconContainerWhite}>
-                        <Ionicons name={item.icon} size={24} color={item.gradient[0]} />
+                        <Ionicons
+                          name={item.icon}
+                          size={24}
+                          color={item.gradient[0]}
+                        />
                       </View>
-                      <View style={[styles.trendBadge, { backgroundColor: "rgba(255,255,255,0.25)" }]}>
+
+                      <View
+                        style={[
+                          styles.trendBadge,
+                          { backgroundColor: "rgba(255,255,255,0.25)" },
+                        ]}
+                      >
                         <Ionicons
                           name={getTrendIcon(item.trend)}
                           size={14}
@@ -489,14 +745,25 @@ const SensorScreen = ({ navigation }) => {
 
                   <View style={styles.cardBody}>
                     <Text style={styles.title}>{item.title}</Text>
+
                     <View style={styles.valueRow}>
                       <Text style={styles.value}>{item.value}</Text>
                       <Text style={styles.unit}>{item.unit}</Text>
                     </View>
 
                     <View style={styles.cardFooter}>
-                      <View style={[styles.statusContainer, { backgroundColor: `${item.statusColor}15` }]}>
-                        <View style={[styles.statusDot, { backgroundColor: item.statusColor }]} />
+                      <View
+                        style={[
+                          styles.statusContainer,
+                          { backgroundColor: `${item.statusColor}15` },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.statusDot,
+                            { backgroundColor: item.statusColor },
+                          ]}
+                        />
                         <Text style={[styles.status, { color: item.statusColor }]}>
                           {item.status}
                         </Text>
@@ -513,35 +780,53 @@ const SensorScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Connection Status Card */}
         <LinearGradient
           colors={isOnline ? ["#E8F5E9", "#C8E6C9"] : ["#FFEBEE", "#FFCDD2"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.connectionCard}
         >
-          <View style={[
-            styles.connectionIcon,
-            { backgroundColor: isOnline ? "rgba(76, 175, 80, 0.15)" : "rgba(244, 67, 54, 0.15)" },
-          ]}>
+          <View
+            style={[
+              styles.connectionIcon,
+              {
+                backgroundColor: isOnline
+                  ? "rgba(76, 175, 80, 0.15)"
+                  : "rgba(244, 67, 54, 0.15)",
+              },
+            ]}
+          >
             <Ionicons
               name={isOnline ? "wifi" : "wifi-outline"}
               size={28}
               color={isOnline ? "#4CAF50" : "#F44336"}
             />
           </View>
+
           <View style={styles.connectionContent}>
-            <Text style={[styles.connectionTitle, { color: isOnline ? "#2E7D32" : "#C62828" }]}>
+            <Text
+              style={[
+                styles.connectionTitle,
+                { color: isOnline ? "#2E7D32" : "#C62828" },
+              ]}
+            >
               {isOnline
                 ? "All Sensors Connected | සියලුම සංවේදක සම්බන්ධිතයි"
                 : "Device Offline | උපාංගය නොබැඳිව"}
             </Text>
-            <Text style={[styles.connectionSubtitle, { color: isOnline ? "#4CAF50" : "#F44336" }]}>
+
+            <Text
+              style={[
+                styles.connectionSubtitle,
+                { color: isOnline ? "#4CAF50" : "#F44336" },
+              ]}
+            >
               {lastSyncTs
                 ? `Last sync: ${formatTimestamp(lastSyncTs)} • ${formatTimeAgoMs(lastSyncTs)}`
                 : "Connecting... | සම්බන්ධ වෙමින්..."}
             </Text>
           </View>
+
           <View style={styles.signalBars}>
             {[8, 12, 16, 22].map((h, i) => (
               <View
@@ -632,17 +917,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: "bold",
     letterSpacing: 0.3,
-  },
-  profileButton: {
-    overflow: "hidden",
-    borderRadius: 16,
-  },
-  profileGradient: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
   },
   summaryContainer: {
     flexDirection: "row",

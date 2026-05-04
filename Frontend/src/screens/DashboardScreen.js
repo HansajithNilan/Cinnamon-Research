@@ -67,7 +67,7 @@ const DashboardContent = () => {
       icon: "thermometer-outline",
       title: "Temperature | උෂ්ණත්වය",
       description: "Prevents moisture loss and preserves quality | තෙතමනය නැතිවීම වළක්වා ගුණාත්මකභාවය ආරක්ෂා කරයි",
-      range: "25-30°C",
+      range: "25-32°C",
       bgColor: "rgba(255, 107, 107, 0.12)",
       iconBg: "rgba(255, 107, 107, 0.15)",
       statusLabel: "Ideal",
@@ -79,7 +79,7 @@ const DashboardContent = () => {
       icon: "water-outline",
       title: "Humidity | ආර්ද්‍රතාවය",
       description: "Avoids mold growth and maintains stickiness | පුස් වර්ධනය වළක්වා ස්වභාවය පවත්වයි",
-      range: "60-70% RH",
+      range: "60-80% RH",
       bgColor: "rgba(78, 205, 196, 0.12)",
       iconBg: "rgba(78, 205, 196, 0.15)",
       statusLabel: "Ideal",
@@ -272,7 +272,7 @@ const DashboardNavigator = () => {
           } else if (route.name === "Sensor") {
             iconName = focused ? "hardware-chip" : "hardware-chip-outline";
           } else if (route.name === "Comparison") {
-            iconName = focused ? "notifications" : "notifications-outline";
+            iconName = focused ? "stats-chart" : "stats-chart-outline";
           } else if (route.name === "Suggestion") {
             iconName = focused ? "bulb" : "bulb-outline";
           }
@@ -323,11 +323,15 @@ const DashboardNavigator = () => {
 const tabStyles = StyleSheet.create({
   iconContainer: {
     padding: 6,
+    justifyContent: "center",
+    alignItems: "center",
   },
   activeIconContainer: {
     padding: 8,
     backgroundColor: "rgba(76, 175, 80, 0.12)",
     borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
